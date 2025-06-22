@@ -6,8 +6,17 @@ export default function LiveKitProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string>();
   useEffect(() => {
     fetch('/api/token')
-      .then((res) => res.json())
-      .then((d) => setToken(d.token));
+      .then((res) => {
+        console.log('LiveKitProvider: Response received', res.status);
+        return res.json();
+      })
+      .then((d) => {
+        console.log('LiveKitProvider: Token received', d);
+        setToken(d.token);
+      })
+      .catch((err) => {
+        console.error('LiveKitProvider: Fetch error', err);
+      });
   }, []);
 
   if (!token) {
@@ -17,7 +26,7 @@ export default function LiveKitProvider({ children }: { children: ReactNode }) {
   return (
     <LiveKitRoom
       token={token}
-      serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL}
+      serverUrl={process.env.LIVEKIT_URL}
       connect
       data-lk-theme="default"
     >

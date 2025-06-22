@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
@@ -11,6 +11,7 @@
   "dependencies": {
     "@livekit/components-core": "^0.12.7",
     "@livekit/components-react": "^2.9.10",
+    "@types/vara": "^1.1.1",
     "framer-motion": "^12.18.1",
     "livekit-client": "^2.13.8",
     "livekit-server-sdk": "^2.13.0",
