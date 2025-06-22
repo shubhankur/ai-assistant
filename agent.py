@@ -4,6 +4,8 @@ from livekit.agents import llm
 from livekit.agents.voice import Agent, AgentSession
 from livekit.agents.llm import ChatContext
 
+from prompts import PROMPTS
+
 class AssistantAgent(Agent):
     def __init__(self, session: AgentSession):
         super().__init__(instructions="")
@@ -13,7 +15,7 @@ class AssistantAgent(Agent):
 
     async def on_enter(self) -> None:
         handle = self._session.say(
-            "Hello! How are you feeling today?",
+            PROMPTS["greeting"],
             allow_interruptions=False,
             add_to_chat_ctx=False,
         )
@@ -38,10 +40,7 @@ class AssistantAgent(Agent):
     ) -> None:
         text = new_message.text_content or ""
         if self.stage == 1:
-            analysis_prompt = (
-                "Analyze user feeling and get a json response, which should look like "
-                '{"feeling": {"primary": "emotion", "secondary": null}, "voice_tone": "appropriate combination of voice properties for the agent based on user\'s feeling"}'
-            )
+            analysis_prompt = PROMPTS["analysis_instructions"]
             resp = await self._llm_complete(analysis_prompt, text)
             try:
                 data = json.loads(resp)
@@ -54,22 +53,23 @@ class AssistantAgent(Agent):
                 self.user_feeling = None
             await self._session.current_agent.update_chat_ctx(ChatContext.empty())
             self._session.clear_user_turn()
-            inject = (
-                f"User is feeling {self.user_feeling}. First, understand what user is feeling, connect emotionally with them and then tell them how can you help them. "
-                "I am your personal assistant. Powered by AI. Built just for you. "
-                "I will help you organize your life and declutter your mind. Ask them if they have 5 uninterrupted minutes to continue or do they want to come back later."
-            )
+            inject = PROMPTS["inject_help"].format(user_feeling=self.user_feeling)
             self._session.generate_reply(instructions=inject, allow_interruptions=False)
             self.stage = 2
         elif self.stage == 2:
-            validation_prompt = "Validate if user wants to continue. Just return 'YES' or 'NO'."
+            validation_prompt = PROMPTS["validation"]
             resp = await self._llm_complete(validation_prompt, text)
             await self._session.current_agent.update_chat_ctx(ChatContext.empty())
             self._session.clear_user_turn()
             answer = resp.strip().upper()
+<<<<<<< HEAD
             if answer.startswith("NO"):
                 self._session.say("Thank you.", allow_interruptions=False, add_to_chat_ctx=False)
+=======
+            if answer.startswith("N"):
+                self._session.say(PROMPTS["farewell"], allow_interruptions=False, add_to_chat_ctx=False)
+>>>>>>> b12740899506b4623ec0bcf6f2f88fde0720c0d2
                 self.stage = -1
             else:
-                self._session.generate_reply(instructions="Great! Tell me about your work routine.")
+                self._session.generate_reply(instructions=PROMPTS["continue_prompt"])
                 self.stage = 3

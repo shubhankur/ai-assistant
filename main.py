@@ -10,6 +10,7 @@ from livekit.plugins import (
 )
 from agent import AssistantAgent
 from dotenv import load_dotenv
+from prompts import PROMPTS
 
 
 load_dotenv('.env', override=True)
@@ -22,7 +23,7 @@ async def entrypoint(ctx: agents.JobContext):
         tts=openai.tts.TTS(
             model="gpt-4o-mini-tts",
             voice="alloy",
-            instructions="Speak like a human conversation with calm and soothing tone.",
+            instructions=PROMPTS["tts_instructions"],
         ),
         vad=silero.vad.VAD.load(),
         min_endpointing_delay=2,
