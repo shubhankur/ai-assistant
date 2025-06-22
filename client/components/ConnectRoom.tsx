@@ -2,7 +2,7 @@
 import { LiveKitRoom } from '@livekit/components-react';
 import { ReactNode, useEffect, useState } from 'react';
 
-export default function LiveKitProvider({ children }: { children: ReactNode }) {
+export default function ConnectRoom({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string>();
   useEffect(() => {
     fetch('/api/token')
