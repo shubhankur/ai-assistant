@@ -1,12 +1,13 @@
 'use client'
 import { useEffect, useState } from 'react';
 import { BarVisualizer, useVoiceAssistant, useTrackToggle } from '@livekit/components-react';
+import { Track } from 'livekit-client';
 import ConnectRoom from '../../components/ConnectRoom';
 import { TypeAnimation } from 'react-type-animation';
 
 export default function SessionPage() {
   const { agentTranscriptions, state } = useVoiceAssistant();
-  const { buttonProps, enabled } = useTrackToggle({ source: 'microphone' });
+  const { buttonProps, enabled } = useTrackToggle({ source: Track.Source.Microphone });
   const [text, setText] = useState('');
 
   useEffect(() => {
