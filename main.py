@@ -4,6 +4,7 @@ from livekit import rtc
 from livekit.agents.voice import AgentSession, RoomIO
 from livekit.plugins import openai, silero
 from agent import AssistantAgent
+from prompts import PROMPTS
 
 async def main():
     url = os.environ.get("LIVEKIT_URL")
@@ -17,7 +18,7 @@ async def main():
         tts=openai.tts.TTS(
             model="gpt-4o-mini-tts",
             voice="alloy",
-            instructions="Speak like a human conversation with calm and soothing tone.",
+            instructions=PROMPTS["tts_instructions"],
         ),
         vad=silero.vad.VAD.load(),
         min_endpointing_delay=2,
