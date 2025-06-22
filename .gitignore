@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+lib/
+lib64/
+
+# Virtual Environment
+.env
+.env.local
+.venv
+env/
+venv/
+ENV/
+.livekit/
+
+# IDE
+.vscode/
+*.swp
+*.swo
+.DS_Store
