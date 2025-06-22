@@ -3,6 +3,7 @@ import json
 from livekit.agents import llm
 from livekit.agents.voice import Agent, AgentSession
 from livekit.agents.llm import ChatContext
+from livekit.agents.llm.tool_context import StopResponse
 
 from prompts import PROMPTS
 
@@ -56,34 +57,26 @@ class AssistantAgent(Agent):
             await self._session.current_agent.update_chat_ctx(ChatContext.empty())
             self._session.clear_user_turn()
             inject = PROMPTS["inject_help"].format(user_feeling=self.user_feeling)
+            #stop agent from replying and generate a new reply instead
             self._session.generate_reply(instructions=inject, allow_interruptions=False)
             self.stage = 2
+            raise StopResponse()
         elif self.stage == 2:
             validation_prompt = PROMPTS["validation"]
             resp = await self._llm_complete(validation_prompt, text)
             await self._session.current_agent.update_chat_ctx(ChatContext.empty())
             self._session.clear_user_turn()
             answer = resp.strip().upper()
-<<<<<<< HEAD
             if answer.startswith("NO"):
-                self._session.say("Thank you.", allow_interruptions=False, add_to_chat_ctx=False)
-=======
-            if answer.startswith("N"):
                 self._session.say(PROMPTS["farewell"], allow_interruptions=False, add_to_chat_ctx=False)
->>>>>>> b12740899506b4623ec0bcf6f2f88fde0720c0d2
                 self.stage = -1
             else:
                 self._session.generate_reply(instructions=PROMPTS["continue_prompt"])
                 self.stage = 3
+            #stop agent from replying and generate a new reply instead
+            raise StopResponse()
         elif self.stage == 3:
-            work_prompt = (
-                "Understand what user do for their Job. "
-                "What do they do for their work? Is their work timings fixed or flexible? "
-                "What are their work timings? "
-                "What days of the week do they have to work from home and go to office? "
-                "If they go to office, what's their commute time? "
-                "Return a JSON object summarizing this information."
-            )
+            work_prompt = PROMPTS["work_prompt"]
             resp = await self._llm_complete(work_prompt, text)
             try:
                 self.work_routine = json.loads(resp)
@@ -99,11 +92,7 @@ class AssistantAgent(Agent):
             )
             self.stage = 4
         elif self.stage == 4:
-            routine_prompt = (
-                "Understand what is the user routine for the daily essenials, which are, "
-                "Sleep Schedule, Meal timings, Workout routines, Household chores. "
-                "Return a JSON object capturing this information."
-            )
+            routine_prompt = PROMPTS["routine_prompt"]
             resp = await self._llm_complete(routine_prompt, text)
             try:
                 self.daily_essentials = json.loads(resp)

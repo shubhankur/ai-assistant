@@ -12,5 +12,14 @@ PROMPTS = {
     "validation": "Validate if user wants to continue. Just return 'YES' or 'NO'.",
     "continue_prompt": "Great! Tell me about your work routine.",
     "farewell": "Thank you.",
-    "tts_instructions": "Speak like a human conversation with calm and soothing tone."
+    "tts_instructions": "Speak like a human conversation with calm and soothing tone.",
+    "work_prompt" : "Understand what user do for their Job. "
+                "What do they do for their work? Is their work timings fixed or flexible? "
+                "What are their work timings? "
+                "What days of the week do they have to work from home and go to office? "
+                "If they go to office, what's their commute time? "
+                "Return a JSON object summarizing this information.",
+    "routine_prompt" : "Understand what is the user routine for the daily essenials, which are, "
+                "Sleep Schedule, Meal timings, Workout routines, Household chores. "
+                "Return a JSON object capturing this information."
 }
