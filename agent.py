@@ -45,10 +45,11 @@ class AssistantAgent(Agent):
             resp = await self._llm_complete(analysis_prompt, text)
             try:
                 data = json.loads(resp)
+                print("llm response", data)
                 self.user_feeling = data.get("feeling", {}).get("primary")
-                voice_tone = data.get("voice_tone")
+                voice_tone = "Set your voice tone to: " + data.get("voice_tone")
                 if voice_tone:
-                    self._session.tts.update_options(instructions=voice_tone)
+                    self.update_instructions(instructions=voice_tone)
             except json.JSONDecodeError:
                 self.user_feeling = None
             await self._session.current_agent.update_chat_ctx(ChatContext.empty())
@@ -66,7 +67,7 @@ class AssistantAgent(Agent):
             await self._session.current_agent.update_chat_ctx(ChatContext.empty())
             self._session.clear_user_turn()
             answer = resp.strip().upper()
-            if answer.startswith("N"):
+            if answer.startswith("NO"):
                 self._session.say("Thank you.", allow_interruptions=False, add_to_chat_ctx=False)
                 self.stage = -1
             else:
