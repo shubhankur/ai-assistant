@@ -24,6 +24,14 @@ PROMPTS = {
         "If they go to office, what's their commute time? "
         "Return a JSON object summarizing this information."
     ),
+    "extract_work_routine": (
+        "Extract details about the user's work routine and respond only with a JSON object. "
+        "The JSON should match the following structure: {"
+        "\"job_title\": \"string\", "
+        "\"work_description\": \"string\", "
+        "\"schedule\": {\"type\": \"fixed|flexible\", \"start_time\": \"HH:MM\", \"end_time\": \"HH:MM\", \"timezone\": \"string\"}, "
+        "\"location\": {\"work_from_home_days\": [], \"office_days\": [], \"commute_minutes\": 0, \"commute_mode\": \"string\"}}"
+    ),
     "ask_daily_essentials": (
         "Thanks for sharing. Now, tell me about your daily essentials like "
         "sleep schedule, meal timings, workout routines and household chores."
