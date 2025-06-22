@@ -57,7 +57,7 @@ class AssistantAgent(Agent):
     ) -> None:
         text = new_message.text_content or ""
         if self.stage == 1:
-            analysis_prompt = PROMPTS["analysis"]
+            analysis_prompt = PROMPTS["analyze_user_feeling"]
             resp = await self._llm_complete(analysis_prompt, text)
             data = self._parse_json(resp)
             if data:
@@ -67,16 +67,20 @@ class AssistantAgent(Agent):
                 if voice_tone:
                     self.update_instructions(instructions=voice_tone)
             else:
-                self.user_feeling = None
+                self.user_feeling = "neutral"
             await self._session.current_agent.update_chat_ctx(ChatContext.empty())
             self._session.clear_user_turn()
-            inject = PROMPTS["offer_help"].format(user_feeling=self.user_feeling)
+            #stage 1 to greet and anazlyze user feeling is done
+
+            #moving to stage2
+            self.stage = 2
+            #first acknowlegde user's feeling and explain what this app does
+            inject = PROMPTS["app_details"].format(user_feeling=self.user_feeling)
             #stop agent from replying and generate a new reply instead
             self._session.generate_reply(instructions=inject, allow_interruptions=False)
-            self.stage = 2
-            raise StopResponse()
+            raise StopResponse() #this stops the previous flow, where user talked about their feeling
         elif self.stage == 2:
-            validation_prompt = PROMPTS["continue_validation"]
+            validation_prompt = PROMPTS["validate_if_continue"] #validate if user replied that they want to continue or not.
             resp = await self._llm_complete(validation_prompt, text)
             await self._session.current_agent.update_chat_ctx(ChatContext.empty())
             self._session.clear_user_turn()
@@ -86,7 +90,8 @@ class AssistantAgent(Agent):
                 self.stage = -1
             else:
                 self._session.generate_reply(instructions=PROMPTS["ask_work_routine"])
-                self.stage = 3
+                #stage2 to describe about app and ask if the want to conitnue is over, starting stage 3 - work routine
+                self.stage = 3 
             #stop agent from replying and generate a new reply instead
             raise StopResponse()
         elif self.stage == 3:
