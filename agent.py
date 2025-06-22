@@ -12,6 +12,8 @@ class AssistantAgent(Agent):
         self._session = session
         self.stage = 0
         self.user_feeling = None
+        self.work_routine = None
+        self.daily_essentials = None
 
     async def on_enter(self) -> None:
         handle = self._session.say(
@@ -73,3 +75,41 @@ class AssistantAgent(Agent):
             else:
                 self._session.generate_reply(instructions=PROMPTS["continue_prompt"])
                 self.stage = 3
+        elif self.stage == 3:
+            work_prompt = (
+                "Understand what user do for their Job. "
+                "What do they do for their work? Is their work timings fixed or flexible? "
+                "What are their work timings? "
+                "What days of the week do they have to work from home and go to office? "
+                "If they go to office, what's their commute time? "
+                "Return a JSON object summarizing this information."
+            )
+            resp = await self._llm_complete(work_prompt, text)
+            try:
+                self.work_routine = json.loads(resp)
+            except json.JSONDecodeError:
+                self.work_routine = resp.strip()
+            await self._session.current_agent.update_chat_ctx(ChatContext.empty())
+            self._session.clear_user_turn()
+            self._session.generate_reply(
+                instructions=(
+                    "Thanks for sharing. Now, tell me about your daily essentials like "
+                    "sleep schedule, meal timings, workout routines and household chores."
+                )
+            )
+            self.stage = 4
+        elif self.stage == 4:
+            routine_prompt = (
+                "Understand what is the user routine for the daily essenials, which are, "
+                "Sleep Schedule, Meal timings, Workout routines, Household chores. "
+                "Return a JSON object capturing this information."
+            )
+            resp = await self._llm_complete(routine_prompt, text)
+            try:
+                self.daily_essentials = json.loads(resp)
+            except json.JSONDecodeError:
+                self.daily_essentials = resp.strip()
+            await self._session.current_agent.update_chat_ctx(ChatContext.empty())
+            self._session.clear_user_turn()
+            self._session.say("Great! I have captured your routine. Thank you.", allow_interruptions=False, add_to_chat_ctx=False)
+            self.stage = -1
