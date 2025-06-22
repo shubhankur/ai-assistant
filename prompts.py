@@ -4,9 +4,10 @@ PROMPTS = {
     ),
     "greeting": "Hello! How are you feeling today?",
     "analysis": (
-        "Analyze user feeling and get a json response, which should look like "
+        "Analyze user feeling and respond only with JSON matching the format "
         '{"feeling": {"primary": "emotion", "secondary": null}, '
         '"voice_tone": "appropriate combination of voice properties for the agent based on user\'s feeling"}'
+        " Do not include any other text."
     ),
     "offer_help": (
         "User is feeling {user_feeling}. First, understand what user is feeling, connect emotionally with them and then tell them how can you help them. "

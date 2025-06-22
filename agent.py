@@ -1,5 +1,6 @@
 import asyncio
 import json
+import re
 from livekit.agents import llm
 from livekit.agents.voice import Agent, AgentSession
 from livekit.agents.llm import ChatContext
@@ -38,6 +39,19 @@ class AssistantAgent(Agent):
         await stream.aclose()
         return "".join(parts).strip()
 
+    def _parse_json(self, text: str) -> dict | None:
+        """Attempt to parse a JSON object from the given text."""
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            match = re.search(r"\{.*\}", text, re.DOTALL)
+            if match:
+                try:
+                    return json.loads(match.group(0))
+                except json.JSONDecodeError:
+                    return None
+            return None
+
     async def on_user_turn_completed(
         self, turn_ctx: llm.ChatContext, new_message: llm.ChatMessage
     ) -> None:
@@ -45,14 +59,14 @@ class AssistantAgent(Agent):
         if self.stage == 1:
             analysis_prompt = PROMPTS["analysis"]
             resp = await self._llm_complete(analysis_prompt, text)
-            try:
-                data = json.loads(resp)
+            data = self._parse_json(resp)
+            if data:
                 print("llm response", data)
                 self.user_feeling = data.get("feeling", {}).get("primary")
                 voice_tone = "Set your voice tone to: " + data.get("voice_tone")
                 if voice_tone:
                     self.update_instructions(instructions=voice_tone)
-            except json.JSONDecodeError:
+            else:
                 self.user_feeling = None
             await self._session.current_agent.update_chat_ctx(ChatContext.empty())
             self._session.clear_user_turn()
@@ -78,9 +92,10 @@ class AssistantAgent(Agent):
         elif self.stage == 3:
             work_prompt = PROMPTS["extract_work_routine"]
             resp = await self._llm_complete(work_prompt, text)
-            try:
-                self.work_routine = json.loads(resp)
-            except json.JSONDecodeError:
+            data = self._parse_json(resp)
+            if data is not None:
+                self.work_routine = data
+            else:
                 self.work_routine = resp.strip()
             await self._session.current_agent.update_chat_ctx(ChatContext.empty())
             self._session.clear_user_turn()
@@ -89,9 +104,10 @@ class AssistantAgent(Agent):
         elif self.stage == 4:
             routine_prompt = PROMPTS["extract_daily_essentials"]
             resp = await self._llm_complete(routine_prompt, text)
-            try:
-                self.daily_essentials = json.loads(resp)
-            except json.JSONDecodeError:
+            data = self._parse_json(resp)
+            if data is not None:
+                self.daily_essentials = data
+            else:
                 self.daily_essentials = resp.strip()
             await self._session.current_agent.update_chat_ctx(ChatContext.empty())
             self._session.clear_user_turn()
