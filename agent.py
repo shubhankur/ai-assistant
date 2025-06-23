@@ -1,4 +1,10 @@
-from collections.abc import Coroutine
+import asyncio
+            try:
+                participant = await asyncio.wait_for(
+                    self._session._room_io._participant_available_fut, timeout=5
+                )
+            except Exception:
+                participant = self._session._room_io.linked_participant
 import json
 import re
 from typing import AsyncIterable, Any

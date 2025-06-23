@@ -3,18 +3,11 @@ import { useEffect, useState } from 'react';
 import { BarVisualizer, useVoiceAssistant, useTrackToggle } from '@livekit/components-react';
 import ConnectRoom from '../../components/ConnectRoom';
 import { TypeAnimation } from 'react-type-animation';
-import { Track } from 'livekit-client';
-
-function SessionContent() {
   const { agentTranscriptions, state } = useVoiceAssistant();
-  const { buttonProps, enabled } = useTrackToggle({ source: Track.Source.Microphone });
+  const { buttonProps, enabled } = useTrackToggle({ source: 'microphone' });
   const [text, setText] = useState('');
 
   useEffect(() => {
-    setText(agentTranscriptions.map((t) => t.text).join(' '));
-  }, [agentTranscriptions]);
-
-  return (
     <div className="flex flex-col items-center p-6 gap-4">
       <div className="w-full max-w-xl h-48 overflow-y-auto p-4 border rounded bg-white/70 backdrop-blur-md">
         <TypeAnimation sequence={[text]} speed={70} style={{ whiteSpace: 'pre-line' }} />

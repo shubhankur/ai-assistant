@@ -2,14 +2,27 @@
 import { LiveKitRoom } from '@livekit/components-react';
 import { ReactNode, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { Room } from 'livekit-client';
 
 export default function ConnectRoom({ children }: { children: ReactNode }) {
   const params = useSearchParams();
   const [token, setToken] = useState<string>();
-  const [serverUrl, setServerUrl] = useState<string>();
+  const [room, setRoom] = useState<Room>();
+
   useEffect(() => {
-    const query = new URLSearchParams(params.toString());
-    fetch(`/api/token?${query.toString()}`)
+    if (!token) return;
+    const r = new Room();
+    r.connect(process.env.NEXT_PUBLIC_LIVEKIT_URL as string, token)
+      .then(() => r.localParticipant.setMicrophoneEnabled(true))
+      .catch((err) => console.error('LiveKit connect error', err));
+    setRoom(r);
+    return () => {
+      r.disconnect();
+    };
+  }, [token]);
+
+  if (!room) {
+      room={room}
       .then((res) => {
         console.log('LiveKitProvider: Response received', res.status);
         return res.json();
