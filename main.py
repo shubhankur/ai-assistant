@@ -15,6 +15,7 @@ load_dotenv('.env', override=True)
 
 
 async def entrypoint(ctx: agents.JobContext):
+    print("Inside entrypoint function")
     session = AgentSession(
         stt=openai.stt.STT(model="gpt-4o-transcribe"),
         llm=openai.llm.LLM(model="gpt-4o-mini"),
@@ -41,6 +42,11 @@ async def entrypoint(ctx: agents.JobContext):
             noise_cancellation=noise_cancellation.BVC(), 
         ),
     )
+
+    print("Room: ", ctx.room.name)
+
+    ctx.room.on("participant_connected", agent.on_participant_connected)
+    ctx.room.on("room_connected", agent.on_room_connected)
 
     await ctx.connect()
 

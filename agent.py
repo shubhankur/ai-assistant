@@ -1,9 +1,13 @@
+from collections.abc import Coroutine
 import json
 import re
+from typing import AsyncIterable, Any
 from livekit.agents import llm
 from livekit.agents.voice import Agent, AgentSession
 from livekit.agents.llm import ChatContext
 from livekit.agents.llm.tool_context import StopResponse
+from livekit.agents.voice.agent import ModelSettings
+from livekit.rtc.participant import RemoteParticipant
 
 from prompts import PROMPTS
 
@@ -15,6 +19,39 @@ class AssistantAgent(Agent):
         self.user_feeling = None
         self.work_routine = None
         self.daily_essentials = None
+
+    def on_participant_connected(self, participant : RemoteParticipant):
+        if participant and participant.metadata:
+            print("participant metadata: ", participant.metadata)
+            try:
+                data = json.loads(participant.metadata)
+                self.user_feeling = data.get("feeling") or "neutral"
+            except Exception:
+                self.user_feeling = "neutral"
+        else:
+            self.user_feeling = "neutral"
+
+        self.stage = 2
+        prompt = PROMPTS["app_details"].format(user_feeling=self.user_feeling)
+        self._session.generate_reply(instructions=prompt, allow_interruptions=False)
+    
+    def on_room_connected(self):
+        participant = None
+        if hasattr(self._session, "_room_io") and self._session._room_io:
+            participant = self._session._room_io.linked_participant
+
+        if participant and participant.metadata:
+            try:
+                data = json.loads(participant.metadata)
+                self.user_feeling = data.get("feeling") or "neutral"
+            except Exception:
+                self.user_feeling = "neutral"
+        else:
+            self.user_feeling = "neutral"
+
+        self.stage = 2
+        prompt = PROMPTS["app_details"].format(user_feeling=self.user_feeling)
+        self._session.generate_reply(instructions=prompt, allow_interruptions=False)
 
     async def on_enter(self) -> None:
         participant = None
@@ -31,8 +68,8 @@ class AssistantAgent(Agent):
             self.user_feeling = "neutral"
 
         self.stage = 2
-        inject = PROMPTS["app_details"].format(user_feeling=self.user_feeling)
-        self._session.generate_reply(instructions=inject, allow_interruptions=False)
+        prompt = PROMPTS["app_details"].format(user_feeling=self.user_feeling)
+        self._session.generate_reply(instructions=prompt, allow_interruptions=False)
 
     async def _llm_complete(self, system_prompt: str, user_text: str) -> str:
         ctx = ChatContext.empty()
@@ -102,17 +139,18 @@ class AssistantAgent(Agent):
             #stop agent from replying and generate a new reply instead
             raise StopResponse()
         elif self.stage == 3:
-            work_prompt = PROMPTS["extract_work_routine"]
-            resp = await self._llm_complete(work_prompt, text)
-            data = self._parse_json(resp)
-            if data is not None:
-                self.work_routine = data
-            else:
-                self.work_routine = resp.strip()
-            await self._session.current_agent.update_chat_ctx(ChatContext.empty())
-            self._session.clear_user_turn()
-            self._session.generate_reply(instructions=PROMPTS["ask_daily_essentials"])
-            self.stage = 4
+            # work_prompt = PROMPTS["extract_work_routine"]
+            # resp = await self._llm_complete(work_prompt, text)
+            # data = self._parse_json(resp)
+            # if data is not None:
+            #     self.work_routine = data
+            # else:
+            #     self.work_routine = resp.strip()
+            # await self._session.current_agent.update_chat_ctx(ChatContext.empty())
+            # self._session.clear_user_turn()
+            # self._session.generate_reply(instructions=PROMPTS["ask_daily_essentials"])
+            # self.stage = 4
+            pass;
         elif self.stage == 4:
             routine_prompt = PROMPTS["extract_daily_essentials"]
             resp = await self._llm_complete(routine_prompt, text)
@@ -125,3 +163,33 @@ class AssistantAgent(Agent):
             self._session.clear_user_turn()
             self._session.say(PROMPTS["routine_acknowledge"], allow_interruptions=False, add_to_chat_ctx=False)
             self.stage = -1
+
+    async def transcription_node(self, text: AsyncIterable[str], model_settings: ModelSettings) -> AsyncIterable[str] | Coroutine[Any, Any, AsyncIterable[str]] | Coroutine[Any, Any, None]:
+        if(self.stage == 3):
+            llm_response = ""
+            async for delta in text:
+                llm_response += delta
+            data = self._parse_json(llm_response)
+            if data:
+                stage = data.get("stage")
+                if(stage == "SATISFIED"):
+                    #extract work routine keys from JSON
+                    next_prompt = PROMPTS["ask_daily_essentials"]
+                    self.session.generate_reply(instructions=next_prompt)
+                    self.stage = 4
+                    raise StopResponse()
+        elif(self.stage == 4):
+            llm_response = ""
+            async for delta in text:
+                llm_response += delta
+            data = self._parse_json(llm_response)
+            if data:
+                stage = data.get("stage")
+                if(stage == "SATISFIED"):
+                    #extract work routine keys from JSON
+                    next_prompt = PROMPTS["routine_acknowledge"]
+                    self.session.generate_reply(instructions=next_prompt)
+                    self.stage = 5
+                    raise StopResponse()
+        async for delta in text:
+                yield delta

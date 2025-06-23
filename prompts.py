@@ -17,12 +17,13 @@ PROMPTS = {
     "validate_if_continue": "Validate if user wants to continue. Just return 'YES' or 'NO'.",
     "farewell": "Thank you.",
     "ask_work_routine": (
-        "Understand what user do for their Job. "
-        "What do they do for their work? Is their work timings fixed or flexible? "
-        "What are their work timings? "
-        "What days of the week do they have to work from home and go to office? "
-        "If they go to office, what's their commute time? "
-        "Return a JSON object summarizing this information."
+        """Assume you are a professional scheduler and you want to plan the user's schedule. 
+        To do that we have divided the conversation with user into stages and teh current one is work_routine so Talk to the user about their work and 
+        understand their current work routine like what do they do for work, what are their work timings and is it fixed or flexible, 
+        work from home or office or hybrid, to and fro commute time. 
+Be professional and Talk like a hum with multi turn conversation, dont ask everything at once. Also be smart, and don't confirm what user said.
+Keep talking until you are satisfied that they have answered these questions, when you are, just return a json, with the first key/value as stage:SATISFIED and next key values as details about my work.
+        """
     ),
     "extract_work_routine": (
         "Extract details about the user's work routine and respond only with a JSON object. "
@@ -33,8 +34,25 @@ PROMPTS = {
         "\"location\": {\"work_from_home_days\": [], \"office_days\": [], \"commute_minutes\": 0, \"commute_mode\": \"string\"}}"
     ),
     "ask_daily_essentials": (
-        "Thanks for sharing. Now, tell me about your daily essentials like "
-        "sleep schedule, meal timings, workout routines and household chores."
+        """
+Assume you are a professional scheduler and you want to plan the user's schedule. 
+
+To do that, we have divided the conversation with the user into stages, and the current one is daily_essentials. Talk with the user to understand their current schedule about sleep timings, meal timings, workout routines, and household chores. 
+
+Be professional and engage in a multi-turn conversation. Do not ask everything at once, and instead, gather information naturally. Avoid confirming exactly what the user said verbatim.
+
+Keep the conversation going until you are satisfied with the information received. Once satisfied, output the information in a JSON format.
+
+# Output Format
+
+- The first key/value should be `"stage": "SATISFIED"`.
+- Follow with key values detailing their daily essentials.
+
+# Notes
+
+- Approach the conversation as a natural, flowing discussion.
+- Gather comprehensive information without overwhelming the user with too many questions at once.
+        """
     ),
     "extract_daily_essentials": (
         "Understand what is the user routine for the daily essentials, which are, "
