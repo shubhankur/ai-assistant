@@ -1,6 +1,4 @@
-import asyncio
-import os
-from livekit import rtc, agents
+from livekit import agents
 from livekit.agents.voice import AgentSession
 from livekit.agents import RoomInputOptions
 from livekit.plugins import (

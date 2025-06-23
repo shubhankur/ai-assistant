@@ -1,4 +1,3 @@
-import asyncio
 import json
 import re
 from livekit.agents import llm
@@ -18,14 +17,22 @@ class AssistantAgent(Agent):
         self.daily_essentials = None
 
     async def on_enter(self) -> None:
-        handle = self._session.say(
-            PROMPTS["greeting"],
-            allow_interruptions=False,
-            add_to_chat_ctx=False,
-        )
-        await handle
-        self._session.clear_user_turn()
-        self.stage = 1
+        participant = None
+        if hasattr(self._session, "_room_io") and self._session._room_io:
+            participant = self._session._room_io.linked_participant
+
+        if participant and participant.metadata:
+            try:
+                data = json.loads(participant.metadata)
+                self.user_feeling = data.get("feeling") or "neutral"
+            except Exception:
+                self.user_feeling = "neutral"
+        else:
+            self.user_feeling = "neutral"
+
+        self.stage = 2
+        inject = PROMPTS["app_details"].format(user_feeling=self.user_feeling)
+        self._session.generate_reply(instructions=inject, allow_interruptions=False)
 
     async def _llm_complete(self, system_prompt: str, user_text: str) -> str:
         ctx = ChatContext.empty()

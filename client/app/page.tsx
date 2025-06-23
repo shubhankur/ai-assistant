@@ -33,7 +33,15 @@ export default function Home() {
           </button>
         ))}
       </div>
-      <Link href="/session" className="mt-4 px-6 py-2 rounded bg-purple-600 text-white">Continue</Link>
+      <Link
+        href={{
+          pathname: '/session',
+          query: { feeling: selected.join(','), stage: 'app_details' },
+        }}
+        className="mt-4 px-6 py-2 rounded bg-purple-600 text-white"
+      >
+        Continue
+      </Link>
     </div>
   );
 }

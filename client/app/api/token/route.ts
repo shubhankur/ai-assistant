@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { AccessToken } from 'livekit-server-sdk';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const identity = `user-${Math.random().toString(36).slice(2, 10)}`;
   const apiKey = process.env.LIVEKIT_API_KEY;
   const apiSecret = process.env.LIVEKIT_API_SECRET;
@@ -13,6 +13,13 @@ export async function GET() {
 
   const at = new AccessToken(apiKey, apiSecret, { identity });
   at.addGrant({ roomJoin: true, room: roomName });
+
+  const params = req.nextUrl.searchParams;
+  const feeling = params.get('feeling');
+  const stage = params.get('stage');
+  if (feeling || stage) {
+    at.metadata = JSON.stringify({ feeling, stage });
+  }
   const token = await at.toJwt();
 
   return NextResponse.json({ token });
