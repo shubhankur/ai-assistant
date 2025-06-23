@@ -44,6 +44,11 @@ async def entrypoint(ctx: agents.JobContext):
     )
 
     print("Room: ", ctx.room.name)
+    print("Paritcipant Num", ctx.room.num_participants)
+    print("Paritcipant Local", ctx.room.local_participant.name)
+    print("Paritcipant Local", ctx.room.local_participant.identity)
+    print("Paritcipant Remote", ctx.room.remote_participants.keys())
+    print("Paritcipant Remote", ctx.room.remote_participants.values())
 
     ctx.room.on("participant_connected", agent.on_participant_connected)
     ctx.room.on("room_connected", agent.on_room_connected)
