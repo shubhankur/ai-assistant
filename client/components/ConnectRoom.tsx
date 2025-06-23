@@ -4,6 +4,7 @@ import { ReactNode, useEffect, useState } from 'react';
 
 export default function ConnectRoom({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string>();
+  const [serverUrl, setServerUrl] = useState<string>();
   useEffect(() => {
     fetch('/api/token')
       .then((res) => {
@@ -13,6 +14,7 @@ export default function ConnectRoom({ children }: { children: ReactNode }) {
       .then((d) => {
         console.log('LiveKitProvider: Token received', d);
         setToken(d.token);
+        setServerUrl(d.serverUrl);
       })
       .catch((err) => {
         console.error('LiveKitProvider: Fetch error', err);
@@ -26,7 +28,7 @@ export default function ConnectRoom({ children }: { children: ReactNode }) {
   return (
     <LiveKitRoom
       token={token}
-      serverUrl={process.env.LIVEKIT_URL}
+      serverUrl={serverUrl}
       connect
       data-lk-theme="default"
     >
