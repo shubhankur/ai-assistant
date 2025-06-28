@@ -1,5 +1,5 @@
 'use client'
-import { LiveKitRoom } from '@livekit/components-react';
+import { LiveKitRoom, RoomAudioRenderer } from '@livekit/components-react';
 import { ReactNode, useEffect, useState } from 'react';
 
 export default function ConnectRoom({
@@ -38,6 +38,7 @@ export default function ConnectRoom({
       connect
       data-lk-theme="default"
     >
+      <RoomAudioRenderer />
       {children}
     </LiveKitRoom>
   );
