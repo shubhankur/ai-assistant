@@ -12,7 +12,9 @@ export default function ConnectRoom({
   const [token, setToken] = useState<string>();
   const [serverUrl, setServerUrl] = useState<string>();
   useEffect(() => {
-    fetch(`/api/token?feelings=${encodeURIComponent(feelings)}`)
+    if (token) return;
+    const q = feelings ? `?feelings=${encodeURIComponent(feelings)}` : '';
+    fetch(`/api/token${q}`)
       .then((res) => {
         console.log('LiveKitProvider: Response received', res.status);
         return res.json();
@@ -25,7 +27,7 @@ export default function ConnectRoom({
       .catch((err) => {
         console.error('LiveKitProvider: Fetch error', err);
       });
-  }, [feelings]);
+  }, [feelings, token]);
 
   if (!token) {
     return <div className="p-4 text-center">Connecting...</div>;

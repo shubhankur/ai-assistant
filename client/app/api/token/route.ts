@@ -4,12 +4,12 @@ import { AccessToken } from 'livekit-server-sdk';
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const feelings = searchParams.get('feelings') || '';
+  const roomName = process.env.LIVEKIT_ROOM || 'assistant';
   const id = Math.random().toString(36).slice(2, 10)
   const identity = `user-${id}`;
   const apiKey = process.env.LIVEKIT_API_KEY;
   const apiSecret = process.env.LIVEKIT_API_SECRET;
   const serverUrl = process.env.LIVEKIT_URL;
-  const roomName = `room-${id}`;
 
   if (!apiKey || !apiSecret) {
     return NextResponse.json({ error: 'Missing credentials' }, { status: 500 });
