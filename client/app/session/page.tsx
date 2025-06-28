@@ -28,8 +28,15 @@ function SessionContent() {
 }
 
 export default function SessionPage() {
+  const [feelings, setFeelings] = useState('');
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      setFeelings(params.get('feelings') || '');
+    }
+  }, []);
   return (
-    <ConnectRoom>
+    <ConnectRoom feelings={feelings}>
       <SessionContent />
     </ConnectRoom>
   );
