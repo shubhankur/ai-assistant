@@ -1,0 +1,11 @@
+# Core LiveKit libraries used in main.py
+livekit==1.0.10
+livekit-agents==1.1.1
+livekit-plugins-openai==1.1.1
+livekit-plugins-silero==1.1.1
+livekit-plugins-turn-detector==1.1.1
+livekit-plugins-noise-cancellation==0.2.4
+
+# Environment variable management
+python-dotenv==1.1.0
+pip-system-certs==5.2
