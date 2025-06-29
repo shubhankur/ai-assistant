@@ -16,6 +16,8 @@
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --lk-va-bar-width: 72px;
+    --lk-control-bar-height: unset;
   }
 }
 
@@ -23,4 +25,29 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+.agent-visualizer > .lk-audio-bar {
+  width: 72px;
+}
+
+.lk-agent-control-bar {
+  border-top: 0;
+  padding: 0;
+  height: min-content;
+  margin-right: 1rem;
+}
+
+.lk-disconnect-button {
+  height: 36px;
+}
+
+.lk-disconnect-button:hover {
+  background-color: #6b221a;
+  color: white;
+}
+
+.lk-disconnect-button {
+  background-color: #31100c;
+  border-color: #6b221a;
 }

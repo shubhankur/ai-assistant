@@ -1,29 +1,52 @@
 'use client'
 import { useEffect, useState } from 'react';
-import { BarVisualizer, useVoiceAssistant, useTrackToggle } from '@livekit/components-react';
+import { BarVisualizer, useVoiceAssistant, useTrackToggle, RoomAudioRenderer } from '@livekit/components-react';
+import { NoAgentNotification } from "@/components/NoAgentNotification";
+
 import ConnectRoom from '../../components/ConnectRoom';
 import { TypeAnimation } from 'react-type-animation';
 import { Track } from 'livekit-client';
 
-function SessionContent() {
-  const { agentTranscriptions, state } = useVoiceAssistant();
-  const { buttonProps, enabled } = useTrackToggle({ source: Track.Source.Microphone });
-  const [text, setText] = useState('');
-  console.log("state: ", state)
+import { AnimatePresence, motion } from "framer-motion";
 
-  useEffect(() => {
-    setText(agentTranscriptions.map((t) => t.text).join(' '));
-  }, [agentTranscriptions]);
+function SessionContent() {
+  const { state: agentState } = useVoiceAssistant();
+  console.log("state: ", agentState)
 
   return (
-    <div className="flex flex-col items-center p-6 gap-4">
-      <div className="w-full max-w-xl h-48 overflow-y-auto p-4 border rounded bg-white/70 backdrop-blur-md">
-        <TypeAnimation sequence={[text]} speed={70} style={{ whiteSpace: 'pre-line' }} />
-      </div>
-      <BarVisualizer className="w-64 h-16" state={state} />
-      <button {...buttonProps} className="px-4 py-2 rounded bg-purple-600 text-white">
-        {enabled ? 'Mute' : 'Unmute'}
-      </button>
+    <>
+      <AnimatePresence mode="wait">
+        {(
+          <motion.div
+            key="connected"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3, ease: [0.09, 1.04, 0.245, 1.055] }}
+            className="flex flex-col items-center gap-4 h-full"
+          >
+            <AgentVisualizer />
+            <RoomAudioRenderer />
+            <NoAgentNotification state={agentState} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  )
+}
+
+function AgentVisualizer() {
+  const { state: agentState, videoTrack, audioTrack } = useVoiceAssistant();
+
+  return (
+    <div className="h-[300px] w-full">
+      <BarVisualizer
+        state={agentState}
+        barCount={5}
+        trackRef={audioTrack}
+        className="agent-visualizer"
+        options={{ minHeight: 24 }}
+      />
     </div>
   );
 }
