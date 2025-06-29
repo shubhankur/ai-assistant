@@ -44,7 +44,15 @@ async def entrypoint(ctx: agents.JobContext):
         ),
     )
 
-    await ctx.connect()
+    async def handle_participant(p: rtc.RemoteParticipant):
+        feeling = p.metadata or ctx.decode_token().get("metadata", "")
+        print("feeling", feeling)
+        if feeling:
+            agent.start_with_feeling(feeling)
+
+    for p in ctx.room.remote_participants.values():
+        print("participant", p.identity)
+        await handle_participant(p)
 
 if __name__ == "__main__":
     agents.cli.run_app(agents.WorkerOptions(entrypoint_fnc=entrypoint))

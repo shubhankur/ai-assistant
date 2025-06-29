@@ -1,12 +1,21 @@
 'use client'
-import { LiveKitRoom } from '@livekit/components-react';
+import { LiveKitRoom, RoomAudioRenderer } from '@livekit/components-react';
 import { ReactNode, useEffect, useState } from 'react';
 
-export default function ConnectRoom({ children }: { children: ReactNode }) {
+export default function ConnectRoom({
+  children,
+  feelings,
+}: {
+  children: ReactNode;
+  feelings: string;
+}) {
   const [token, setToken] = useState<string>();
   const [serverUrl, setServerUrl] = useState<string>();
   useEffect(() => {
-    fetch('/api/token')
+    if (token || !feelings) return;
+    const q = feelings ? `?feelings=${encodeURIComponent(feelings)}` : '';
+    console.log("feelings in connect room", q)
+    fetch(`/api/token${q}`)
       .then((res) => {
         console.log('LiveKitProvider: Response received', res.status);
         return res.json();
@@ -19,7 +28,7 @@ export default function ConnectRoom({ children }: { children: ReactNode }) {
       .catch((err) => {
         console.error('LiveKitProvider: Fetch error', err);
       });
-  }, []);
+  }, [feelings, token]);
 
   if (!token) {
     return <div className="p-4 text-center">Connecting...</div>;
@@ -32,6 +41,7 @@ export default function ConnectRoom({ children }: { children: ReactNode }) {
       connect
       data-lk-theme="default"
     >
+      <RoomAudioRenderer />
       {children}
     </LiveKitRoom>
   );

@@ -9,6 +9,7 @@ function SessionContent() {
   const { agentTranscriptions, state } = useVoiceAssistant();
   const { buttonProps, enabled } = useTrackToggle({ source: Track.Source.Microphone });
   const [text, setText] = useState('');
+  console.log("state: ", state)
 
   useEffect(() => {
     setText(agentTranscriptions.map((t) => t.text).join(' '));
@@ -28,8 +29,15 @@ function SessionContent() {
 }
 
 export default function SessionPage() {
+  const [feelings, setFeelings] = useState('');
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      setFeelings(params.get('feelings') || '');
+    }
+  }, []);
   return (
-    <ConnectRoom>
+    <ConnectRoom feelings={feelings}>
       <SessionContent />
     </ConnectRoom>
   );
