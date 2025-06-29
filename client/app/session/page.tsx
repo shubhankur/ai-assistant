@@ -9,6 +9,7 @@ function SessionContent() {
   const { agentTranscriptions, state } = useVoiceAssistant();
   const { buttonProps, enabled } = useTrackToggle({ source: Track.Source.Microphone });
   const [text, setText] = useState('');
+  console.log("state: ", state)
 
   useEffect(() => {
     setText(agentTranscriptions.map((t) => t.text).join(' '));

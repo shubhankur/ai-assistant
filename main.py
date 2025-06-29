@@ -46,12 +46,12 @@ async def entrypoint(ctx: agents.JobContext):
 
     async def handle_participant(p: rtc.RemoteParticipant):
         feeling = p.metadata or ctx.decode_token().get("metadata", "")
+        print("feeling", feeling)
         if feeling:
             agent.start_with_feeling(feeling)
 
-    ctx.room.on("participant_connected", lambda p: asyncio.create_task(handle_participant(p)))
-
     for p in ctx.room.remote_participants.values():
+        print("participant", p.identity)
         await handle_participant(p)
 
 if __name__ == "__main__":

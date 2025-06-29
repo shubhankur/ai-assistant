@@ -12,8 +12,9 @@ export default function ConnectRoom({
   const [token, setToken] = useState<string>();
   const [serverUrl, setServerUrl] = useState<string>();
   useEffect(() => {
-    if (token) return;
+    if (token || !feelings) return;
     const q = feelings ? `?feelings=${encodeURIComponent(feelings)}` : '';
+    console.log("feelings in connect room", q)
     fetch(`/api/token${q}`)
       .then((res) => {
         console.log('LiveKitProvider: Response received', res.status);

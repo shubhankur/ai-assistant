@@ -36,7 +36,7 @@ export default function Home() {
       <Link
         href={{
           pathname: "/session",
-          query: { feelings: selected.join(" ") },
+          query: { feelings: selected.join(",") },
         }}
         className="mt-4 px-6 py-2 rounded bg-purple-600 text-white"
       >
