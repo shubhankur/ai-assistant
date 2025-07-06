@@ -28,8 +28,6 @@ function SessionContent() {
 
   },[agent])
 
-  
-
   return (
     <div className="relative flex flex-col w-full h-full items-center">
       <AnimatePresence mode="wait">
