@@ -16,9 +16,7 @@ type Day = {
   blocks: Block[];
 };
 
-type WeekData = {
-  schemaVersion: number;
-  userId: string;
+export type WeekData = {
   weekOf: string;
   intervalMinutes: number;
   days: Day[];

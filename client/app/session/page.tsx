@@ -5,7 +5,7 @@ import { NoAgentNotification } from "@/components/NoAgentNotification";
 import ConnectRoom from '../../components/ConnectRoom';
 import TranscriptionView from '@/components/TranscriptionView'
 import { RoomEvent, RemoteParticipant } from 'livekit-client'; 
-
+import WeeklyRoutineTimeline, { WeekData } from '@/components/WeeklyRoutine';
 import { AnimatePresence, motion } from "framer-motion";
 import { AnchorsDashboard } from '@/components/AnchorsDashboard';
 
@@ -14,6 +14,7 @@ function SessionContent() {
   console.log("state: ", agentState)
   const [stage, setStage] = useState(1)
   const [anchors, setAnchors] = useState([])
+  const [weekData, setWeekData] = useState<WeekData>()
 
   useEffect(() => {
     try{
@@ -26,6 +27,8 @@ function SessionContent() {
     }
 
   },[agent])
+
+  
 
   return (
     <div className="relative flex flex-col w-full h-full items-center">
@@ -52,7 +55,7 @@ function SessionContent() {
             }
 
             {stage == 5 &&
-              <AnchorsDashboard {...anchors} />
+              <WeeklyRoutineTimeline data = {weekData} />
             }
             
             <RoomAudioRenderer />
@@ -62,9 +65,9 @@ function SessionContent() {
       </AnimatePresence>
       <AnimatePresence mode="wait">
           <motion.div
-            initial={{ opacity: 0, top: "10px" }}
+            initial={{ opacity: 0, top: "1px" }}
             animate={{ opacity: 1, top: 0 }}
-            exit={{ opacity: 0, top: "-10px" }}
+            exit={{ opacity: 0, top: "-1px" }}
             transition={{ duration: 0.4, ease: [0.09, 1.04, 0.245, 1.055] }}
             className="flex flex-col items-center"
           >
@@ -80,13 +83,13 @@ function AgentVisualizer() {
   const { state: agentState, videoTrack, audioTrack } = useVoiceAssistant();
 
   return (
-    <div className="h-[300px] w-full">
+    <div className="h-[100px] w-full">
       <BarVisualizer
         state={agentState}
         barCount={5}
         trackRef={audioTrack}
         className="agent-visualizer"
-        options={{ minHeight: 24 }}
+        options={{ minHeight: 12 }}
       />
     </div>
   );
