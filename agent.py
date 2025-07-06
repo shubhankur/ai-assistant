@@ -4,6 +4,7 @@ from livekit.agents import llm
 from livekit.agents.voice import Agent, AgentSession, ModelSettings
 from livekit.agents.llm import ChatContext, FunctionTool, RawFunctionTool
 from livekit.agents.llm.tool_context import StopResponse
+from livekit.rtc.participant import RemoteParticipant
 from collections.abc import AsyncGenerator
 from livekit.agents.types import NOT_GIVEN
 
@@ -14,18 +15,21 @@ class AssistantAgent(Agent):
         super().__init__(instructions="")
         self._session = session
         self.stage = 1
+        self.user_id = None
         self.user_feeling = None
         self.work_routine = None
         self.daily_essentials = None
         self.user_json_summary = None
+        self.preview_turn = 0
+        self.final_routine_turn = 0
 
     async def on_enter(self) -> None:
         # wait for user feelings to be provided before speaking
-        self.stage = 1
+        self.set_stage(1)
 
     def start_with_feeling(self, feeling: str) -> None:
         self.user_feeling = feeling
-        self.stage = 2
+        self.set_stage(2)
         inject = PROMPTS["app_details"].format(user_feeling=feeling)
         self._session.generate_reply(instructions=inject, allow_interruptions=False)
 
@@ -84,13 +88,13 @@ class AssistantAgent(Agent):
             pass
 
     async def llm_node(
-            agent: Agent,
+            self,
             chat_ctx: llm.ChatContext,
             tools: list[FunctionTool | RawFunctionTool],
             model_settings: ModelSettings,
         ) -> AsyncGenerator[llm.ChatChunk | str, None]:
             """Default implementation for `Agent.llm_node`"""
-            activity = agent._get_activity_or_raise()
+            activity = self._get_activity_or_raise()
             assert activity.llm is not None, "llm_node called but no LLM node is available"
             assert isinstance(activity.llm, llm.LLM), (
                 "llm_node should only be used with LLM (non-multimodal/realtime APIs) nodes"
@@ -103,7 +107,7 @@ class AssistantAgent(Agent):
             async with activity_llm.chat(
                 chat_ctx=chat_ctx, tools=tools, tool_choice=tool_choice, conn_options=conn_options
             ) as stream:
-                if(agent.stage == 3):
+                if(self.stage == 3):
                     print("llm_node stage3")
                     messages = ""
                     for message in chat_ctx.items:
@@ -114,14 +118,15 @@ class AssistantAgent(Agent):
                     async for chunk in stream:
                         response += chunk
                     if(response == "SATISFIED"):
-                        agent.stage = 4
-                        new_prompt = PROMPTS["generate_preview_draft"]
-                        await agent.update_instructions(instructions=new_prompt)
-                        agent._session.generate_reply()
+                        self.set_stage(4)
+                        new_prompt = PROMPTS["generate_preview_draft_json"]
+                        chat_ctx.add_message(role="system", content=new_prompt)
+                        await self._session._agent.update_chat_ctx(chat_ctx)
+                        self._session.generate_reply()
                         raise StopResponse()
                     else:
                         yield response
-                elif(agent.stage == 4):
+                elif(self.stage == 4):
                     print("llm_node stage4")
                     messages = ""
                     for message in chat_ctx.items:
@@ -131,18 +136,28 @@ class AssistantAgent(Agent):
                     async for chunk in stream:
                         draft_routine += chunk
                     print("llm_node stage4 response", draft_routine)
-                    if(draft_routine == "SATISFIED"):
+                    draft_routine_json = self._parse_json(draft_routine)
+                    if(draft_routine_json.get("done")):
                         print("llm_node stage4 satisfied")
-                        agent.stage = 5
+                        self.set_stage(5)
                         new_prompt = PROMPTS["final_routine_draft"]
-                        await agent.update_instructions(instructions=new_prompt)
-                        agent._session.generate_reply()
+                        chat_ctx.add_message(role="system", content=new_prompt)
+                        await self._session._agent.update_chat_ctx(chat_ctx)
+                        self._session.generate_reply()
                     else:
                         #send this draft_routine to frontend
-                        #again update instructions because its ephemeral
-                        await agent.update_instructions(content=[PROMPTS["generate_preview_draft"]])
+                        self._session._room_io._room.local_participant.send_text (
+                            text=draft_routine_json,
+                            topic="drafted_routine"
+                        )
+                        if(self.preview_turn == 0):
+                            self._session.say(PROMPTS["turn0_prompt"])
+                        elif(self.preview_turn == 1):
+                            self._session.say(PROMPTS["turn1_prompt"])
+                        else:
+                            self.session.say(PROMPTS["turn2_prompt"])
                     raise StopResponse()
-                elif(agent.stage == 5):
+                elif(self.stage == 5):
                     print("llm_node stage5")
                     messages = ""
                     for message in chat_ctx.items:
@@ -152,20 +167,36 @@ class AssistantAgent(Agent):
                     async for chunk in stream:
                         weekly_routine_json += chunk
                     print("llm_node stage5 response", weekly_routine_json)
-                    parsed_json = agent._parse_json(weekly_routine_json)
+                    parsed_json = self._parse_json(weekly_routine_json)
                     if(parsed_json and parsed_json.get("SATISFIED")):
                         print("llm_node stage5 satisfied")
-                        agent.stage = 6
+                        self.set_stage(6)
                         #done
                         #we can terminate the room
                     else:
                         #send to front_end
-                        await agent.update_instructions(content=[PROMPTS["final_routine_draft"]])
+                        self._session._room_io._room.local_participant.send_text (
+                            text=weekly_routine_json,
+                            topic="weekly_routine"
+                        )
+                        if(self.final_routine_turn == 0):
+                            self._session.say(PROMPTS["turn0_prompt"])
+                        elif(self.final_routine_turn == 1):
+                            self._session.say(PROMPTS["turn1_prompt"])
+                        else:
+                            self.session.say(PROMPTS["turn2_prompt"])
                     raise StopResponse()
                 else:
                     async for chunk in stream:
                         yield chunk
-
+    
+    def set_user_id(self, id:str):
+        self.user_id = id
+    
+    def set_stage(self, stage_num:int):
+        self.stage(stage_num)
+        metadata = json.dumps({"stage": stage_num})
+        self._session._room_io._room._local_participant.set_metadata(metadata)
 
 
 

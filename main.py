@@ -53,7 +53,9 @@ async def entrypoint(ctx: agents.JobContext):
 
     for p in ctx.room.remote_participants.values():
         print("participant", p.identity)
-        await handle_participant(p)
+        if(p.identity.startswith("user")):
+            agent.set_user_id(p.identity)
+            await handle_participant(p)
 
 if __name__ == "__main__":
     agents.cli.run_app(agents.WorkerOptions(entrypoint_fnc=entrypoint))

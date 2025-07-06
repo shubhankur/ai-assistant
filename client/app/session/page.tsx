@@ -4,12 +4,28 @@ import { BarVisualizer, DisconnectButton, VoiceAssistantControlBar, useVoiceAssi
 import { NoAgentNotification } from "@/components/NoAgentNotification";
 import ConnectRoom from '../../components/ConnectRoom';
 import TranscriptionView from '@/components/TranscriptionView'
+import { RoomEvent, RemoteParticipant } from 'livekit-client'; 
 
 import { AnimatePresence, motion } from "framer-motion";
+import { AnchorsDashboard } from '@/components/AnchorsDashboard';
 
 function SessionContent() {
-  const { state: agentState } = useVoiceAssistant();
+  const {state: agentState, agent} = useVoiceAssistant();
   console.log("state: ", agentState)
+  const [stage, setStage] = useState(1)
+  const [anchors, setAnchors] = useState([])
+
+  useEffect(() => {
+    try{
+    const metadata = JSON.parse(agent?.metadata ?? '{}')
+    if(stage != metadata.stage){
+      setStage(metadata.stage)
+    }
+    } catch{
+      //ignore
+    }
+
+  },[agent])
 
   return (
     <div className="relative flex flex-col w-full h-full items-center">
@@ -24,9 +40,21 @@ function SessionContent() {
             className="flex flex-col items-center"
           >
             <AgentVisualizer />
-            <div className="flex-1 w-full">
-              <TranscriptionView />
-            </div>
+            {stage < 4 && 
+            (
+              <div className="flex-1 w-full">
+                <TranscriptionView />
+              </div>
+            )}
+
+            {stage == 4 &&
+              <AnchorsDashboard {...anchors} />
+            }
+
+            {stage == 5 &&
+              <AnchorsDashboard {...anchors} />
+            }
+            
             <RoomAudioRenderer />
             <NoAgentNotification state={agentState} />
           </motion.div>
