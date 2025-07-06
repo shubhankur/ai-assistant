@@ -1,8 +1,9 @@
-import useCombinedTranscriptions from "../hooks/useCombinedTranscriptions";
+import { useVoiceAssistant } from "@livekit/components-react";
+
 import * as React from "react";
 
 export default function TranscriptionView() {
-  const combinedTranscriptions = useCombinedTranscriptions();
+  const { agentTranscriptions } = useVoiceAssistant();
   const containerRef = React.useRef<HTMLDivElement>(null);
 
   // scroll to bottom when new transcription is added
@@ -10,7 +11,7 @@ export default function TranscriptionView() {
     if (containerRef.current) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight;
     }
-  }, [combinedTranscriptions]);
+  }, [agentTranscriptions]);
 
   return (
     <div className="relative h-[200px] w-[512px] max-w-[90vw] mx-auto">
@@ -20,15 +21,11 @@ export default function TranscriptionView() {
 
       {/* Scrollable content */}
       <div ref={containerRef} className="h-full flex flex-col gap-2 overflow-y-auto px-4 py-8">
-        {combinedTranscriptions.map((segment) => (
+        {agentTranscriptions.map((segment) => (
           <div
             id={segment.id}
             key={segment.id}
-            className={
-              segment.role === "assistant"
-                ? "p-2 self-start fit-content"
-                : "bg-gray-800 rounded-md p-2 self-end fit-content"
-            }
+            className={"p-2 self-start fit-content"}
           >
             {segment.text}
           </div>

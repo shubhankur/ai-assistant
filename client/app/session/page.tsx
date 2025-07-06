@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import { BarVisualizer, DisconnectButton, VoiceAssistantControlBar, useVoiceAssistant, useTrackToggle, RoomAudioRenderer, useLocalParticipant } from '@livekit/components-react';
 import { NoAgentNotification } from "@/components/NoAgentNotification";
 import ConnectRoom from '../../components/ConnectRoom';
-import { CloseIcon } from '@/components/CloseIcon';
 import TranscriptionView from '@/components/TranscriptionView'
 
 import { AnimatePresence, motion } from "framer-motion";
@@ -42,9 +41,6 @@ function SessionContent() {
             className="flex flex-col items-center"
           >
             <VoiceAssistantControlBar controls={{ leave: false }} />
-            <DisconnectButton>
-              <CloseIcon />
-            </DisconnectButton>
           </motion.div>
       </AnimatePresence>
 
