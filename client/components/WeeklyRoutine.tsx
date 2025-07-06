@@ -24,36 +24,6 @@ type WeekData = {
   days: Day[];
 };
 
-/* -------------- Sample Week Data ---------------- */
-const sampleWeek: WeekData = {
-  schemaVersion: 1,
-  userId: "demo-user",
-  weekOf: "2025-07-07",
-  intervalMinutes: 30,
-  days: [
-    {
-      day: "Mon",
-      blocks: [
-        { start: "01:30", end: "06:30", label: "Sleep", category: "routine" },
-        { start: "08:30", end: "18:30", label: "Work", category: "work", location: "Office", details: "Client A deliverables" },
-        { start: "19:00", end: "20:00", label: "Workout", category: "routine", location: "Gym", details: "Push day" },
-        { start: "23:00", end: "24:00", label: "Sleep", category: "routine" },
-        { start: "00:30", end: "01:00", label: "Sleep", category: "routine" }
-      ]
-    },
-    {
-      day: "Tue",
-      blocks: [
-        { start: "00:00", end: "07:00", label: "Sleep", category: "routine" },
-        { start: "09:00", end: "18:00", label: "Work (WFH)", category: "work", details: "Sprint planning" },
-        { start: "21:00", end: "23:00", label: "Side Project", category: "goal", details: "Build landing page" },
-        { start: "23:30", end: "24:00", label: "Sleep", category: "routine" }
-      ]
-    }
-    // …Wed–Sun
-  ]
-};
-
 /* -------------- Helpers ------------------------- */
 // Base colours by top‑level category
 const categoryHex: Record<Block["category"], string> = {
@@ -135,7 +105,7 @@ const DayColumn: React.FC<{ day: Day; stepPx: number; interval: number; totalHei
   </div>
 );
 
-const WeeklyRoutineTimeline: React.FC<{ data?: WeekData }> = ({ data = sampleWeek }) => {
+const WeeklyRoutineTimeline: React.FC<{ data?: WeekData }> = ({data}) => {
   const interval = data.intervalMinutes;
   const stepPx = 20;
   const totalHeight = (1440 / interval) * stepPx;
@@ -153,11 +123,4 @@ const WeeklyRoutineTimeline: React.FC<{ data?: WeekData }> = ({ data = sampleWee
   );
 };
 
-/* -------------- Demo --------------------------- */
-export default function Demo() {
-  return (
-    <div className="p-4 space-y-4">
-      <WeeklyRoutineTimeline />
-    </div>
-  );
-}
+export default WeeklyRoutineTimeline;
