@@ -69,8 +69,11 @@ class AssistantAgent(Agent):
                 self._session.say(PROMPTS["farewell"], allow_interruptions=False, add_to_chat_ctx=False)
                 self.stage = -1
             else:
-                await self._session.current_agent.update_chat_ctx(ChatContext.empty())
-                self._session.generate_reply(instructions=PROMPTS["draft_routine"])
+                # await self._session.current_agent.update_chat_ctx(ChatContext.empty())
+                ctx = ChatContext.empty()
+                ctx.add_message(role="system", content=[PROMPTS["draft_routine"]])
+                await self._session._agent.update_chat_ctx(ctx)
+                self._session.generate_reply()
                 #stage2 to describe about app and ask if the want to conitnue is over, starting stage 3 - work routine
                 self.stage = 3 
             #stop agent from replying and generate a new reply instead
@@ -106,23 +109,24 @@ class AssistantAgent(Agent):
                     for message in chat_ctx.items:
                         messages += message.text_content + "\n"
                     print("Chat context messages:", messages)
-                    first_chunk = None
-                    satisfied = False
+
+                    response = ""
                     async for chunk in stream:
-                        if(first_chunk is None):
-                            first_chunk = chunk
-                            if(first_chunk == "SATISFIED"):
-                                print("llm_node stage3 satisfied")
-                                satisfied = True
-                                break
-                        yield chunk
-                    if(satisfied):
+                        response += chunk
+                    if(response == "SATISFIED"):
                         agent.stage = 4
                         new_prompt = PROMPTS["generate_preview_draft"]
-                        await agent._session.generate_reply(instructions=new_prompt)
-                        raise StopResponse() 
+                        await agent.update_instructions(instructions=new_prompt)
+                        agent._session.generate_reply()
+                        raise StopResponse()
+                    else:
+                        yield response
                 elif(agent.stage == 4):
                     print("llm_node stage4")
+                    messages = ""
+                    for message in chat_ctx.items:
+                        messages += message.text_content + "\n"
+                    print("Chat context messages:", messages)
                     draft_routine = ""
                     async for chunk in stream:
                         draft_routine += chunk
@@ -131,13 +135,19 @@ class AssistantAgent(Agent):
                         print("llm_node stage4 satisfied")
                         agent.stage = 5
                         new_prompt = PROMPTS["final_routine_draft"]
-                        await agent._session.generate_reply(instructions=new_prompt)
+                        await agent.update_instructions(instructions=new_prompt)
+                        agent._session.generate_reply()
                     else:
                         #send this draft_routine to frontend
-                        pass
+                        #again update instructions because its ephemeral
+                        await agent.update_instructions(content=[PROMPTS["generate_preview_draft"]])
                     raise StopResponse()
                 elif(agent.stage == 5):
                     print("llm_node stage5")
+                    messages = ""
+                    for message in chat_ctx.items:
+                        messages += message.text_content + "\n"
+                    print("Chat context messages:", messages)
                     weekly_routine_json = ""
                     async for chunk in stream:
                         weekly_routine_json += chunk
@@ -146,7 +156,11 @@ class AssistantAgent(Agent):
                     if(parsed_json and parsed_json.get("SATISFIED")):
                         print("llm_node stage5 satisfied")
                         agent.stage = 6
-                    #send to front_end
+                        #done
+                        #we can terminate the room
+                    else:
+                        #send to front_end
+                        await agent.update_instructions(content=[PROMPTS["final_routine_draft"]])
                     raise StopResponse()
                 else:
                     async for chunk in stream:
