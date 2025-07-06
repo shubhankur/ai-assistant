@@ -19,11 +19,12 @@ load_dotenv('.env', override=True)
 async def entrypoint(ctx: agents.JobContext):
     session = AgentSession(
         stt=openai.stt.STT(model="gpt-4o-transcribe"),
-        llm=openai.llm.LLM(model="gpt-4o-mini"),
+        llm=openai.llm.LLM(model="o4-mini"),
         tts=openai.tts.TTS(
             model="gpt-4o-mini-tts",
             voice="alloy",
             instructions=PROMPTS["tts_instructions"],
+            speed=1.2
         ),
         vad=silero.vad.VAD.load(),
         min_endpointing_delay=2,

@@ -40,8 +40,8 @@ export default function ConnectRoom({
       serverUrl={serverUrl}
       connect
       data-lk-theme="default"
+      audio = {true}
     >
-      <RoomAudioRenderer />
       {children}
     </LiveKitRoom>
   );
