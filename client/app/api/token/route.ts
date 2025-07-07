@@ -16,8 +16,7 @@ export async function GET(req: Request) {
   }
 
   const at = new AccessToken(apiKey, apiSecret, { identity });
-  at.addGrant({ roomJoin: true, room: roomName });
-  console.log("setting metadata", feelings)
+  at.addGrant({ roomJoin: true, room: roomName, canUpdateOwnMetadata: true, canPublishData: true, canSubscribe: true });
   at.metadata = feelings;
   const token = await at.toJwt();
 

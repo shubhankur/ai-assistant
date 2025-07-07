@@ -1,20 +1,59 @@
 'use client'
 import { useEffect, useState } from 'react';
-import { BarVisualizer, useVoiceAssistant, useTrackToggle, RoomAudioRenderer } from '@livekit/components-react';
+import { BarVisualizer, DisconnectButton, VoiceAssistantControlBar, useVoiceAssistant, useTextStream, useTrackToggle, RoomAudioRenderer, useLocalParticipant } from '@livekit/components-react';
 import { NoAgentNotification } from "@/components/NoAgentNotification";
-
 import ConnectRoom from '../../components/ConnectRoom';
-import { TypeAnimation } from 'react-type-animation';
-import { Track } from 'livekit-client';
-
+import TranscriptionView from '@/components/TranscriptionView'
+import { RoomEvent, RemoteParticipant } from 'livekit-client'; 
+import WeeklyRoutineTimeline, { WeekData } from '@/components/WeeklyRoutine';
 import { AnimatePresence, motion } from "framer-motion";
+import { AnchorsDashboard, Anchor } from '@/components/AnchorsDashboard';
 
 function SessionContent() {
-  const { state: agentState } = useVoiceAssistant();
+  const {state: agentState, agentAttributes} = useVoiceAssistant();
   console.log("state: ", agentState)
+  const stage = Number(agentAttributes?.stage ?? 1);
 
+  const { textStreams: anchorStreams } = useTextStream("drafted_routine");   // :contentReference[oaicite:1]{index=1}
+  const { textStreams: weekStreams }   = useTextStream("weekly_routine"); 
+
+  const [anchors, setAnchors] = useState<Anchor[]>([])
+  const [weekData, setWeekData] = useState<WeekData>()
+
+  useEffect(() => {
+    if (anchorStreams.length === 0) return;
+    const latest = anchorStreams[anchorStreams.length - 1].text;
+    console.log("anchor", latest)
+    if (!latest) return;
+
+    try {
+      const parsed = JSON.parse(latest);
+      console.log("anchor_parsed", parsed)
+      if (Array.isArray(parsed.anchors)) setAnchors(parsed.anchors);
+    } catch (e) {
+      console.error("failed to parse anchors payload", e);
+    }
+  }, [anchorStreams]);
+
+  /* ------------- whenever the final weekly grid arrives ----------------- */
+  useEffect(() => {
+    if (weekStreams.length === 0) return;
+    const latest = weekStreams[weekStreams.length - 1].text;
+    console.log("weekStreams", latest)
+    if (!latest) return;
+
+    try {
+      const parsed = JSON.parse(latest);
+      console.log("weekStreams_parsed", parsed)
+      if (parsed.days) setWeekData(parsed as WeekData);
+    } catch (e) {
+      console.error("failed to parse weekData payload", e);
+    }
+  }, [weekStreams]);
+
+  console.log("stage", stage)
   return (
-    <>
+    <div className="relative flex flex-col w-full h-full items-center">
       <AnimatePresence mode="wait">
         {(
           <motion.div
@@ -23,15 +62,42 @@ function SessionContent() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.3, ease: [0.09, 1.04, 0.245, 1.055] }}
-            className="flex flex-col items-center gap-4 h-full"
+            className="flex flex-col items-center"
           >
             <AgentVisualizer />
+            {stage < 4 && 
+            (
+              <div className="flex-1 w-full">
+                <TranscriptionView />
+              </div>
+            )}
+
+            {stage == 4 &&
+              <AnchorsDashboard anchors = {anchors} />
+            }
+
+            {stage == 5 && weekData &&
+              <WeeklyRoutineTimeline data = {weekData} />
+            }
+            
             <RoomAudioRenderer />
             <NoAgentNotification state={agentState} />
           </motion.div>
         )}
       </AnimatePresence>
-    </>
+      <AnimatePresence mode="wait">
+          <motion.div
+            initial={{ opacity: 0, top: "1px" }}
+            animate={{ opacity: 1, top: 0 }}
+            exit={{ opacity: 0, top: "-1px" }}
+            transition={{ duration: 0.4, ease: [0.09, 1.04, 0.245, 1.055] }}
+            className="flex flex-col items-center"
+          >
+            <VoiceAssistantControlBar controls={{ leave: false }} />
+          </motion.div>
+      </AnimatePresence>
+
+    </div>
   )
 }
 

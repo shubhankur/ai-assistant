@@ -11,6 +11,7 @@ from livekit.plugins import (
 from agent import AssistantAgent
 from dotenv import load_dotenv
 from prompts import PROMPTS
+import httpx
 
 
 load_dotenv('.env', override=True)
@@ -19,11 +20,13 @@ load_dotenv('.env', override=True)
 async def entrypoint(ctx: agents.JobContext):
     session = AgentSession(
         stt=openai.stt.STT(model="gpt-4o-transcribe"),
-        llm=openai.llm.LLM(model="gpt-4o-mini"),
+        llm=openai.llm.LLM(model="o4-mini",
+                           timeout=httpx.Timeout(200.0)),
         tts=openai.tts.TTS(
             model="gpt-4o-mini-tts",
             voice="alloy",
             instructions=PROMPTS["tts_instructions"],
+            speed=1.2
         ),
         vad=silero.vad.VAD.load(),
         min_endpointing_delay=2,
@@ -48,11 +51,13 @@ async def entrypoint(ctx: agents.JobContext):
         feeling = p.metadata or ctx.decode_token().get("metadata", "")
         print("feeling", feeling)
         if feeling:
-            agent.start_with_feeling(feeling)
+            await agent.start_with_feeling(feeling)
 
     for p in ctx.room.remote_participants.values():
         print("participant", p.identity)
-        await handle_participant(p)
+        if(p.identity.startswith("user")):
+            agent.set_user_id(p.identity)
+            await handle_participant(p)
 
 if __name__ == "__main__":
     agents.cli.run_app(agents.WorkerOptions(entrypoint_fnc=entrypoint))
