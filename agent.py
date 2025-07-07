@@ -147,7 +147,7 @@ class AssistantAgent(Agent):
                     else:
                         #send this draft_routine to frontend
                         self._session._room_io._room.local_participant.send_text (
-                            text=draft_routine_json,
+                            text=json.dumps(draft_routine_json),
                             topic="drafted_routine"
                         )
                         if(self.preview_turn == 0):
@@ -176,7 +176,7 @@ class AssistantAgent(Agent):
                     else:
                         #send to front_end
                         self._session._room_io._room.local_participant.send_text (
-                            text=weekly_routine_json,
+                            text=json.dumps(weekly_routine_json),
                             topic="weekly_routine"
                         )
                         if(self.final_routine_turn == 0):

@@ -1,19 +1,23 @@
 'use client'
 import { useEffect, useState } from 'react';
-import { BarVisualizer, DisconnectButton, VoiceAssistantControlBar, useVoiceAssistant, useTrackToggle, RoomAudioRenderer, useLocalParticipant } from '@livekit/components-react';
+import { BarVisualizer, DisconnectButton, VoiceAssistantControlBar, useVoiceAssistant, useTextStream, useTrackToggle, RoomAudioRenderer, useLocalParticipant } from '@livekit/components-react';
 import { NoAgentNotification } from "@/components/NoAgentNotification";
 import ConnectRoom from '../../components/ConnectRoom';
 import TranscriptionView from '@/components/TranscriptionView'
 import { RoomEvent, RemoteParticipant } from 'livekit-client'; 
 import WeeklyRoutineTimeline, { WeekData } from '@/components/WeeklyRoutine';
 import { AnimatePresence, motion } from "framer-motion";
-import { AnchorsDashboard } from '@/components/AnchorsDashboard';
+import { AnchorsDashboard, Anchor } from '@/components/AnchorsDashboard';
 
 function SessionContent() {
   const {state: agentState, agent} = useVoiceAssistant();
   console.log("state: ", agentState)
   const [stage, setStage] = useState(1)
-  const [anchors, setAnchors] = useState([])
+
+  const { textStreams: anchorStreams } = useTextStream("drafted_routine");   // :contentReference[oaicite:1]{index=1}
+  const { textStreams: weekStreams }   = useTextStream("weekly_routine"); 
+
+  const [anchors, setAnchors] = useState<Anchor[]>([])
   const [weekData, setWeekData] = useState<WeekData>()
 
   useEffect(() => {
@@ -27,6 +31,33 @@ function SessionContent() {
     }
 
   },[agent])
+
+  useEffect(() => {
+    if (anchorStreams.length === 0) return;
+    const latest = anchorStreams[anchorStreams.length - 1].text;
+    if (!latest) return;
+
+    try {
+      const parsed = JSON.parse(latest);
+      if (Array.isArray(parsed.anchors)) setAnchors(parsed.anchors);
+    } catch (e) {
+      console.error("failed to parse anchors payload", e);
+    }
+  }, [anchorStreams]);
+
+  /* ------------- whenever the final weekly grid arrives ----------------- */
+  useEffect(() => {
+    if (weekStreams.length === 0) return;
+    const latest = weekStreams[weekStreams.length - 1].text;
+    if (!latest) return;
+
+    try {
+      const parsed = JSON.parse(latest);
+      if (parsed.days) setWeekData(parsed as WeekData);
+    } catch (e) {
+      console.error("failed to parse weekData payload", e);
+    }
+  }, [weekStreams]);
 
   return (
     <div className="relative flex flex-col w-full h-full items-center">
