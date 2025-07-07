@@ -29,9 +29,13 @@ class AssistantAgent(Agent):
 
     async def start_with_feeling(self, feeling: str) -> None:
         self.user_feeling = feeling
-        await self.set_stage(2)
-        inject = PROMPTS["app_details"].format(user_feeling=feeling)
-        self._session.generate_reply(instructions=inject, allow_interruptions=False)
+        # await self.set_stage(2)
+        # inject = PROMPTS["app_details"].format(user_feeling=feeling)
+        # self._session.generate_reply(instructions=inject, allow_interruptions=False)
+        await self.set_stage(3)
+        chat_ctx = ChatContext.empty()
+        chat_ctx.add_message(role="user", content=PROMPTS["stage3"])
+        await self._session._agent.update_chat_ctx(chat_ctx=chat_ctx)
 
     async def _llm_complete(self, system_prompt: str, user_text: str) -> str:
         ctx = ChatContext.empty()
@@ -99,7 +103,6 @@ class AssistantAgent(Agent):
             assert isinstance(activity.llm, llm.LLM), (
                 "llm_node should only be used with LLM (non-multimodal/realtime APIs) nodes"
             )
-            print("in LLM node")
             tool_choice = model_settings.tool_choice if model_settings else NOT_GIVEN
             activity_llm = activity.llm
 
@@ -119,6 +122,7 @@ class AssistantAgent(Agent):
                         if chunk.delta and chunk.delta.content:
                             response += chunk.delta.content
                     if(response == "SATISFIED"):
+                        print("llm_node stage3 satisfied")
                         await self.set_stage(4)
                         new_prompt = PROMPTS["generate_preview_draft_json"]
                         chat_ctx.add_message(role="system", content=new_prompt)
@@ -129,10 +133,6 @@ class AssistantAgent(Agent):
                         yield response
                 elif(self.stage == 4):
                     print("llm_node stage4")
-                    messages = ""
-                    for message in chat_ctx.items:
-                        messages += message.text_content + "\n"
-                    print("Chat context messages:", messages)
                     draft_routine = ""
                     async for chunk in stream:
                         if chunk.delta and chunk.delta.content:
@@ -148,6 +148,7 @@ class AssistantAgent(Agent):
                         self._session.generate_reply()
                     else:
                         #send this draft_routine to frontend
+                        print("draft_json", draft_routine_json)
                         await self._session._room_io._room.local_participant.send_text (
                             text=json.dumps(draft_routine_json),
                             topic="drafted_routine"
@@ -198,8 +199,8 @@ class AssistantAgent(Agent):
     
     async def set_stage(self, stage_num:int):
         self.stage = stage_num
-        metadata = json.dumps({"stage": stage_num})
-        await self._session._room_io._room._local_participant.set_metadata(metadata)
+        metadata = {"stage": str(stage_num)}
+        await self._session._room_io._room.local_participant.set_attributes(metadata)
 
 
 

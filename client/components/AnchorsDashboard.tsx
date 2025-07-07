@@ -79,7 +79,7 @@ const Chip: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 );
 
 
-export const AnchorsDashboard: React.FC<Anchor[]> = (anchors) => {
+export const AnchorsDashboard: React.FC<{ anchors: Anchor[] }> = ({anchors}) => {
   const [search, setSearch] = useState("");
 
   const filtered = useMemo(() => {
@@ -98,8 +98,8 @@ export const AnchorsDashboard: React.FC<Anchor[]> = (anchors) => {
       />
 
       {/* Anchors list */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {filtered.map(anchor => (
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 text-black">
+        {filtered && filtered.map(anchor => (
           <Card key={anchor.id}>
             <details open className="p-3">
               <summary className="flex items-center justify-between cursor-pointer list-none">

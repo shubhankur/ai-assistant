@@ -11,6 +11,7 @@ from livekit.plugins import (
 from agent import AssistantAgent
 from dotenv import load_dotenv
 from prompts import PROMPTS
+import httpx
 
 
 load_dotenv('.env', override=True)
@@ -19,7 +20,8 @@ load_dotenv('.env', override=True)
 async def entrypoint(ctx: agents.JobContext):
     session = AgentSession(
         stt=openai.stt.STT(model="gpt-4o-transcribe"),
-        llm=openai.llm.LLM(model="o4-mini"),
+        llm=openai.llm.LLM(model="o4-mini",
+                           timeout=httpx.Timeout(200.0)),
         tts=openai.tts.TTS(
             model="gpt-4o-mini-tts",
             voice="alloy",

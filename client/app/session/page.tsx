@@ -10,9 +10,9 @@ import { AnimatePresence, motion } from "framer-motion";
 import { AnchorsDashboard, Anchor } from '@/components/AnchorsDashboard';
 
 function SessionContent() {
-  const {state: agentState, agent} = useVoiceAssistant();
+  const {state: agentState, agentAttributes} = useVoiceAssistant();
   console.log("state: ", agentState)
-  const [stage, setStage] = useState(1)
+  const stage = Number(agentAttributes?.stage ?? 1);
 
   const { textStreams: anchorStreams } = useTextStream("drafted_routine");   // :contentReference[oaicite:1]{index=1}
   const { textStreams: weekStreams }   = useTextStream("weekly_routine"); 
@@ -21,24 +21,14 @@ function SessionContent() {
   const [weekData, setWeekData] = useState<WeekData>()
 
   useEffect(() => {
-    try{
-    const metadata = JSON.parse(agent?.metadata ?? '{}')
-    if(stage != metadata.stage){
-      setStage(metadata.stage)
-    }
-    } catch{
-      //ignore
-    }
-
-  },[agent])
-
-  useEffect(() => {
     if (anchorStreams.length === 0) return;
     const latest = anchorStreams[anchorStreams.length - 1].text;
+    console.log("anchor", latest)
     if (!latest) return;
 
     try {
       const parsed = JSON.parse(latest);
+      console.log("anchor_parsed", parsed)
       if (Array.isArray(parsed.anchors)) setAnchors(parsed.anchors);
     } catch (e) {
       console.error("failed to parse anchors payload", e);
@@ -49,16 +39,19 @@ function SessionContent() {
   useEffect(() => {
     if (weekStreams.length === 0) return;
     const latest = weekStreams[weekStreams.length - 1].text;
+    console.log("weekStreams", latest)
     if (!latest) return;
 
     try {
       const parsed = JSON.parse(latest);
+      console.log("weekStreams_parsed", parsed)
       if (parsed.days) setWeekData(parsed as WeekData);
     } catch (e) {
       console.error("failed to parse weekData payload", e);
     }
   }, [weekStreams]);
 
+  console.log("stage", stage)
   return (
     <div className="relative flex flex-col w-full h-full items-center">
       <AnimatePresence mode="wait">
@@ -80,10 +73,10 @@ function SessionContent() {
             )}
 
             {stage == 4 &&
-              <AnchorsDashboard {...anchors} />
+              <AnchorsDashboard anchors = {anchors} />
             }
 
-            {stage == 5 &&
+            {stage == 5 && weekData &&
               <WeeklyRoutineTimeline data = {weekData} />
             }
             

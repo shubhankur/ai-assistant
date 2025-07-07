@@ -103,7 +103,7 @@ const DayColumn: React.FC<{ day: Day; stepPx: number; interval: number; totalHei
   </div>
 );
 
-const WeeklyRoutineTimeline: React.FC<{ data?: WeekData }> = ({data}) => {
+const WeeklyRoutineTimeline: React.FC<{ data: WeekData }> = ({data}) => {
   const interval = data.intervalMinutes;
   const stepPx = 20;
   const totalHeight = (1440 / interval) * stepPx;
