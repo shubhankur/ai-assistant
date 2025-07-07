@@ -1,8 +1,8 @@
-import asyncio
-import os
 from livekit import rtc, agents
 from livekit.agents.voice import AgentSession
 from livekit.agents import RoomInputOptions
+from livekit.agents.types import APIConnectOptions
+from livekit.agents.voice.agent_session import SessionConnectOptions
 from livekit.plugins import (
     openai,
     noise_cancellation,
@@ -18,6 +18,15 @@ load_dotenv('.env', override=True)
 
 
 async def entrypoint(ctx: agents.JobContext):
+
+    session_opts = SessionConnectOptions(
+        llm_conn_options=APIConnectOptions(
+            timeout=60.0,          # <= raise per-request limit
+            max_retry=3,            # keep whatever retry policy you like
+            retry_interval=2.0
+        )
+    )
+
     session = AgentSession(
         stt=openai.stt.STT(model="gpt-4o-transcribe"),
         llm=openai.llm.LLM(model="o4-mini",
@@ -31,6 +40,7 @@ async def entrypoint(ctx: agents.JobContext):
         vad=silero.vad.VAD.load(),
         min_endpointing_delay=2,
         allow_interruptions=False,
+        conn_options = session_opts
     )
 
     agent = AssistantAgent(session)

@@ -4,36 +4,57 @@ import { BarVisualizer, DisconnectButton, VoiceAssistantControlBar, useVoiceAssi
 import { NoAgentNotification } from "@/components/NoAgentNotification";
 import ConnectRoom from '../../components/ConnectRoom';
 import TranscriptionView from '@/components/TranscriptionView'
-import { RoomEvent, RemoteParticipant } from 'livekit-client'; 
 import WeeklyRoutineTimeline, { WeekData } from '@/components/WeeklyRoutine';
 import { AnimatePresence, motion } from "framer-motion";
-import { AnchorsDashboard, Anchor } from '@/components/AnchorsDashboard';
+// import { AnchorsDashboard, Anchor } from '@/components/AnchorsDashboard';
+import { RoutineSummary } from '@/components/RoutineSummary';
+import { SuggestionList } from '@/components/SuggestionList';
 
 function SessionContent() {
   const {state: agentState, agentAttributes} = useVoiceAssistant();
   console.log("state: ", agentState)
   const stage = Number(agentAttributes?.stage ?? 1);
 
-  const { textStreams: anchorStreams } = useTextStream("drafted_routine");   // :contentReference[oaicite:1]{index=1}
+  const { textStreams: suggestedChangesStreams } = useTextStream("suggestion_list");
+  const { textStreams: routineSummaryStream } = useTextStream("routine_preview");
   const { textStreams: weekStreams }   = useTextStream("weekly_routine"); 
 
-  const [anchors, setAnchors] = useState<Anchor[]>([])
+  const [suggestedChanges, setSuggestedChanges] = useState()
+  // const [anchors, setAnchors] = useState<Anchor[]>([])
+  const [routineSummary, setRoutineSummary] = useState()
   const [weekData, setWeekData] = useState<WeekData>()
 
+  /* ------------- whenever the suggested changes arrives ----------------- */
   useEffect(() => {
-    if (anchorStreams.length === 0) return;
-    const latest = anchorStreams[anchorStreams.length - 1].text;
-    console.log("anchor", latest)
+    if (suggestedChangesStreams.length === 0) return;
+    const latest = suggestedChangesStreams[suggestedChangesStreams.length - 1].text;
+    console.log("suggested changes", latest)
     if (!latest) return;
 
     try {
       const parsed = JSON.parse(latest);
-      console.log("anchor_parsed", parsed)
-      if (Array.isArray(parsed.anchors)) setAnchors(parsed.anchors);
+      console.log("suggested changes parsed", parsed)
+      setSuggestedChanges(parsed)
     } catch (e) {
       console.error("failed to parse anchors payload", e);
     }
-  }, [anchorStreams]);
+  }, [suggestedChangesStreams]);
+
+  /* ------------- whenever the routine summary arrives ----------------- */
+  useEffect(() => {
+    if (routineSummaryStream.length === 0) return;
+    const latest = routineSummaryStream[routineSummaryStream.length - 1].text;
+    console.log("routine_summary", latest)
+    if (!latest) return;
+
+    try {
+      const parsed = JSON.parse(latest);
+      console.log("routine_summary_parsed", parsed)
+      setRoutineSummary(parsed)
+    } catch (e) {
+      console.error("failed to parse anchors payload", e);
+    }
+  }, [routineSummaryStream]);
 
   /* ------------- whenever the final weekly grid arrives ----------------- */
   useEffect(() => {
@@ -73,10 +94,14 @@ function SessionContent() {
             )}
 
             {stage == 4 &&
-              <AnchorsDashboard anchors = {anchors} />
+              <SuggestionList data = {suggestedChanges} />
+            }   
+
+            {stage == 5 &&
+              <RoutineSummary data = {routineSummary} />
             }
 
-            {stage == 5 && weekData &&
+            {stage == 6 && weekData &&
               <WeeklyRoutineTimeline data = {weekData} />
             }
             
