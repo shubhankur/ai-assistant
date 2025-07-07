@@ -105,23 +105,17 @@ function AgentVisualizer() {
   const { state: agentState, videoTrack, audioTrack } = useVoiceAssistant();
 
   return (
-    <div className="h-[100px] w-full">
+    <div className="h-[300px] w-full">
       <BarVisualizer
         state={agentState}
         barCount={5}
         trackRef={audioTrack}
         className="agent-visualizer"
-        options={{ minHeight: 12 }}
+        options={{ minHeight: 24 }}
       />
     </div>
   );
 }
-
-function UserView(){
-  const {localParticipant} = useLocalParticipant()
-  localParticipant.getTrackPublicationByName
-}
-
 
 export default function SessionPage() {
   const [feelings, setFeelings] = useState('');

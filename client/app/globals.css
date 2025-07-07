@@ -45,13 +45,13 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --lk-va-bar-width: 72px;
+    --lk-va-bar-width: 24px;
     --lk-control-bar-height: unset;
   }
 }
 
 .agent-visualizer > .lk-audio-bar {
-  width: 72px;
+  width: 24px;
 }
 
 .lk-agent-control-bar {
