@@ -49,7 +49,7 @@ async def entrypoint(ctx: agents.JobContext):
         feeling = p.metadata or ctx.decode_token().get("metadata", "")
         print("feeling", feeling)
         if feeling:
-            agent.start_with_feeling(feeling)
+            await agent.start_with_feeling(feeling)
 
     for p in ctx.room.remote_participants.values():
         print("participant", p.identity)

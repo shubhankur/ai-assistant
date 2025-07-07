@@ -25,11 +25,11 @@ class AssistantAgent(Agent):
 
     async def on_enter(self) -> None:
         # wait for user feelings to be provided before speaking
-        self.set_stage(1)
+        self.stage = 1
 
-    def start_with_feeling(self, feeling: str) -> None:
+    async def start_with_feeling(self, feeling: str) -> None:
         self.user_feeling = feeling
-        self.set_stage(2)
+        await self.set_stage(2)
         inject = PROMPTS["app_details"].format(user_feeling=feeling)
         self._session.generate_reply(instructions=inject, allow_interruptions=False)
 
@@ -116,9 +116,10 @@ class AssistantAgent(Agent):
 
                     response = ""
                     async for chunk in stream:
-                        response += chunk
+                        if chunk.delta and chunk.delta.content:
+                            response += chunk.delta.content
                     if(response == "SATISFIED"):
-                        self.set_stage(4)
+                        await self.set_stage(4)
                         new_prompt = PROMPTS["generate_preview_draft_json"]
                         chat_ctx.add_message(role="system", content=new_prompt)
                         await self._session._agent.update_chat_ctx(chat_ctx)
@@ -134,19 +135,20 @@ class AssistantAgent(Agent):
                     print("Chat context messages:", messages)
                     draft_routine = ""
                     async for chunk in stream:
-                        draft_routine += chunk
+                        if chunk.delta and chunk.delta.content:
+                            draft_routine += chunk.delta.content
                     print("llm_node stage4 response", draft_routine)
                     draft_routine_json = self._parse_json(draft_routine)
                     if(draft_routine_json.get("done")):
                         print("llm_node stage4 satisfied")
-                        self.set_stage(5)
+                        await self.set_stage(5)
                         new_prompt = PROMPTS["final_routine_draft"]
                         chat_ctx.add_message(role="system", content=new_prompt)
                         await self._session._agent.update_chat_ctx(chat_ctx)
                         self._session.generate_reply()
                     else:
                         #send this draft_routine to frontend
-                        self._session._room_io._room.local_participant.send_text (
+                        await self._session._room_io._room.local_participant.send_text (
                             text=json.dumps(draft_routine_json),
                             topic="drafted_routine"
                         )
@@ -165,17 +167,18 @@ class AssistantAgent(Agent):
                     print("Chat context messages:", messages)
                     weekly_routine_json = ""
                     async for chunk in stream:
-                        weekly_routine_json += chunk
+                        if chunk.delta and chunk.delta.content:
+                            weekly_routine_json += chunk.delta.content
                     print("llm_node stage5 response", weekly_routine_json)
                     parsed_json = self._parse_json(weekly_routine_json)
                     if(parsed_json and parsed_json.get("SATISFIED")):
                         print("llm_node stage5 satisfied")
-                        self.set_stage(6)
+                        await self.set_stage(6)
                         #done
                         #we can terminate the room
                     else:
                         #send to front_end
-                        self._session._room_io._room.local_participant.send_text (
+                        await self._session._room_io._room.local_participant.send_text (
                             text=json.dumps(weekly_routine_json),
                             topic="weekly_routine"
                         )
@@ -193,10 +196,10 @@ class AssistantAgent(Agent):
     def set_user_id(self, id:str):
         self.user_id = id
     
-    def set_stage(self, stage_num:int):
-        self.stage(stage_num)
+    async def set_stage(self, stage_num:int):
+        self.stage = stage_num
         metadata = json.dumps({"stage": stage_num})
-        self._session._room_io._room._local_participant.set_metadata(metadata)
+        await self._session._room_io._room._local_participant.set_metadata(metadata)
 
 
 
