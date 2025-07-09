@@ -46,6 +46,12 @@ Just return word "SATISFIED".
         '''
     ),
 
+    "stage3_validate_output_1": (
+        '''
+This response/question to the user is too long and unnecessary, revaluate and generate new response which is accurate, human-like, and concise.
+        '''
+    ),
+
     #stage4 prompt - Suggestions
 "stage4" :(
     '''
@@ -60,15 +66,24 @@ Just return word "SATISFIED".
     HIGHEST, HIGH, MEDIUM, LOW, LEAST
      For example:
     {
-        "done":False
         "HIGHEST": "Change bed time from 2AM to 11PM",
         .....
         "LOW" :[ "daily 15 mins meditation"
                 "consider a standing desk"
                 ]
         .....
+         /* OPTIONAL — present only on regenerated responses */
+        "changes": {
+            "summary": [
+            "what changes did you make in words",
+            "another change",
+            ......
+        ],
     }
-    User will suggest some changes and based on that keep regenerating this json, when the user is happy, update done to True
+    User will either be okay with this list or suggest some changes, if they are okay, DO NOT return a JSON, just return "SATISFIED".
+    Othewise, if user suggested any changes, return new JSON accomodating user's request, this time, with an added block called changes that summarizes
+    what changes did you make based on user's request.
+    Remember if user did not request any change and is satisfied with our response, just return "SATISFIED"
     '''
 ),
 
@@ -112,11 +127,8 @@ Just return word "SATISFIED".
     So that user can verify, if their requirement was understood correctly. 
     The preview should summarize the user's days Mon-Sun with core activities and their details. Make sure to correctly capture with specifics, what user has said 
     about their day to day and the changes that they want to make.
-
-    Based on this preview, user will suggest modification. Keep regenerating this preview accomodating user request until user is done and satisfied with the preview.
     Return this preview only as a json with schema that looks like this
     {
-  "done": False,
   "days": [
     {
       "day": "Mon",                       // ISO short name
@@ -133,9 +145,19 @@ Just return word "SATISFIED".
       ]
     }
     /* Tue … Sun follow the same shape */
-  ]
+  ],
+    /* OPTIONAL — present only on regenerated responses */
+  "changes": {
+    "summary": [
+      "what changes did you make in words",
+      "another change",
+      ......
+    ],
 }
-    Once user is satisifed with the modifications, set the done value to True.
+    User will either be okay with this list or suggest some changes, if they are okay, DO NOT return a JSON, just return "SATISFIED".
+    Otherwise, if user suggested any changes, return new JSON accomodating user's request, this time, with an added block called changes that summarizes
+    what changes did you make based on user's request.
+    Remember if user did not request any change and is satisfied with our response, just return "SATISFIED".
     '''),
 
     "stage5_turn0": "How does this preview of your weekly routine look like? Are you happy with this ? or Do you want some changes?",
@@ -155,7 +177,6 @@ Just return word "SATISFIED".
     , connecting to nature or people during walks, etc.
            JSON Schema:
            {
-            "done": false,
             "weekOf": "YYYY-MM-DD",                // Monday date that the grid starts on
             "intervalMinutes": 30,                 // base grid; blocks already merged by similarity
             "days": [
@@ -175,11 +196,19 @@ Just return word "SATISFIED".
                 ]
                 }
                 /* Tue … Sun objects in the same shape */
-            ]
-            }
-
-           Again user will suggest some modifications so keep regenerating until user is satisfied. Once user is satisfied.
-           return the final JSON but this time, set done to true.
+            ],
+            /* OPTIONAL — present only on regenerated responses */
+            "changes": {
+                "summary": [
+                "what changes did you make in words",
+                "another change",
+                ......
+            ],
+            },
+    User will either be okay with this list or suggest some changes, if they are okay, DO NOT return a JSON, just return "SATISFIED".
+    Otherwise, if user suggested any changes, return new JSON accomodating user's request, this time, with an added block called changes that summarizes
+    what changes did you make based on user's request.
+    Remember if user did not request any change and is satisfied with our response, just return "SATISFIED".
         '''
     ),
     
@@ -200,7 +229,7 @@ Step1: their current daily routine:
 4. Hobbies: what are the things they do and like to do in their free time. How important are these activities, When do they usually like to unwind or relax and what do they do for it.
 Probe only until you are confident you can schedule the week without guessing and then move to next step.
 
-Step2:Ask them their desired changes to their currrent routine, what are the things or habits they want to remove and add.
+Step2: Ask them their desired changes to their currrent routine, what are the things or habits they want to remove and add.
 
 Rules  
 • One concise topic-focused question per turn.  
@@ -208,7 +237,7 @@ Rules
     - dont reiterate or confirm what user said, it will make them impatient and waste their time.
     - Focus particularly on specifics.
     - Don't ask too many questions, there can be cases when the user is unsure or does not have specific answer.
-Understand user's routine deeply, engaging in a multi turn conversation. Don't frustrate users by asking too many questions.
+Understand user's routine deeply, engaging in a multi turn conversation.
 Remember that this is to be used for thousands of users and they should not feel like this is an AI. 
 And you must create an effeective, sepcific and detailed plan.
 Once you are satisfied that you have collected sufficient information then:

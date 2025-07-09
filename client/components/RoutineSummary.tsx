@@ -1,6 +1,6 @@
 'use client'
 import React, { useState } from "react";
-import { ChevronUp, ChevronDown } from "lucide-react";
+import { ChevronUp, ChevronDown, Info } from "lucide-react";
 
 /* ---------------- Types ---------------- */
 export type Category =
@@ -28,6 +28,9 @@ export interface DayTimeline {
 
 export interface WeekPreview {
   days: DayTimeline[];
+  changes?: {
+    summary: string[];
+  };
 }
 
 /* ------------- Helpers ------------------- */
@@ -54,65 +57,69 @@ const catColor: Record<Category, string> = {
 const tz = "America/New_York";
 
 const to12h = (t: string) => {
-  const nextDay = t.includes("+1");
-  const [hStr, mStr] = t.replace("+1", "").split(":");
-  const date = new Date();
-  date.setHours(parseInt(hStr) % 24, parseInt(mStr));
-  const fmt = date.toLocaleTimeString("en-US", {
+  const next = t.includes("+1");
+  const [h, m] = t.replace("+1", "").split(":").map(Number);
+  const d = new Date();
+  d.setHours(h % 24, m);
+  const fmt = d.toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
     timeZone: tz
   });
-  return nextDay ? fmt + " (+1)" : fmt;
+  return next ? fmt + " (+1)" : fmt;
 };
-
-const segmentText = (a: ActivityBlock) => {
-  const time = `${to12h(a.start)}–${to12h(a.end)}`;
-  const loc = a.location ? ` @ ${a.location}` : "";
-  return `${a.activityName} (${time}${loc})`;
-};
+const segText = (a: ActivityBlock) => `${a.activityName} (${to12h(a.start)}–${to12h(a.end)}${a.location ? ` @ ${a.location}` : ""})`;
 
 /* ------------- Component ----------------- */
-interface Props {
-  data?: WeekPreview;
-}
+interface Props { data?: WeekPreview }
 
 export const RoutineSummary: React.FC<Props> = ({ data }) => {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   return (
-    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-      {data && data.days.map((d) => {
-        const isCollapsed = collapsed[d.day];
-        return (
-          <div key={d.day} className="rounded-xl bg-gray-800 shadow-md text-gray-100 flex flex-col">
-            {/* Header */}
-            <div className="flex items-center justify-between px-4 py-2 border-b border-gray-700">
-              <h3 className="font-semibold text-lg">{dayFull[d.day]}</h3>
-              <button
-                onClick={() => setCollapsed((c) => ({ ...c, [d.day]: !c[d.day] }))}
-                className="p-1 rounded hover:bg-gray-700 transition"
-              >
-                {isCollapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
-              </button>
-            </div>
-            {/* Body */}
-            {!isCollapsed && (
-              <div className="flex flex-wrap gap-2 p-4 text-sm">
-                {d.timeline.map((a, idx) => (
-                  <span
-                    key={idx}
-                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-full ${catColor[a.category ?? "other"]} bg-opacity-80`}
-                  >
-                    {segmentText(a)}
-                  </span>
-                ))}
+    <div className="space-y-6">
+      {/* Changes summary */}
+      {data && data.changes?.summary?.length && (
+        <div className="bg-yellow-600/20 text-yellow-100 rounded-lg p-4 flex gap-3">
+          <Info className="mt-0.5" size={18} />
+          <ul className="list-disc list-inside space-y-1 text-sm">
+            {data.changes.summary.map((s, i) => (
+              <li key={i}>{s}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Day cards */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {data && data.days.map((d) => {
+          const isCol = collapsed[d.day];
+          return (
+            <div key={d.day} className="rounded-xl bg-gray-800 shadow text-gray-100 flex flex-col">
+              <div className="flex items-center justify-between px-4 py-2 border-b border-gray-700">
+                <h3 className="font-semibold text-lg">{dayFull[d.day]}</h3>
+                <button
+                  onClick={() => setCollapsed((c) => ({ ...c, [d.day]: !c[d.day] }))}
+                  className="p-1 hover:bg-gray-700 rounded"
+                  aria-label="toggle"
+                >
+                  {isCol ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+                </button>
               </div>
-            )}
-          </div>
-        );
-      })}
+              {!isCol && (
+                <div className="flex flex-wrap gap-2 p-4 text-sm">
+                  {d.timeline.map((a, idx) => (
+                    <span key={idx} className={`inline-flex px-2 py-1 rounded-full ${catColor[a.category ?? "other"]} bg-opacity-80`}>
+                      {segText(a)}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 };

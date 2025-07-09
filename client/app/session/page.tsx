@@ -93,11 +93,11 @@ function SessionContent() {
               </div>
             )}
 
-            {stage == 4 &&
+            {stage == 4 && suggestedChanges &&
               <SuggestionList data = {suggestedChanges} />
             }   
 
-            {stage == 5 &&
+            {stage == 5 && routineSummary &&
               <RoutineSummary data = {routineSummary} />
             }
 

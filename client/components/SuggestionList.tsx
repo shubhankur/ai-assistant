@@ -1,9 +1,18 @@
 import React from "react";
+import { Info } from "lucide-react";
+
 
 /* ---------------- Types ---------------- */
 export type Priority = "HIGHEST" | "HIGH" | "MEDIUM" | "LOW" | "LEAST";
-export interface Suggestions {
-  [key: string]: string | string[];
+export interface SuggestionPayload {
+  HIGHEST?: string | string[];
+  HIGH?: string | string[];
+  MEDIUM?: string | string[];
+  LOW?: string | string[];
+  LEAST?: string | string[];
+  changes?: {
+    summary: string[];
+  };
 }
 
 /* ------------- Styling Maps ------------- */
@@ -36,13 +45,25 @@ const Badge: React.FC<{ p: Priority }> = ({ p }) => (
 
 /* ------------- Component ---------------- */
 interface SuggestionListProps {
-  data?: Suggestions;
+  data?: SuggestionPayload;
 }
 
 export const SuggestionList: React.FC<SuggestionListProps> = ({data}) => (
-    <div className="p-6 bg-black min-h-screen">
-        <h2 className="text-xl font-semibold text-white mb-4">Suggested Changes</h2>
-        <div className="space-y-4 text-gray-200">
+  <div className="p-6 bg-black min-h-screen">
+    <h2 className="text-xl font-semibold text-white mb-4">Suggested Changes</h2>
+    <div className="space-y-4 text-gray-200">
+      {/* Change summary panel */}
+      {data && data.changes?.summary?.length ? (
+        <div className="bg-yellow-600/20 text-yellow-100 rounded-lg p-4 flex gap-3">
+          <Info size={18} className="mt-0.5" />
+          <ul className="list-disc list-inside text-sm space-y-1">
+            {data.changes.summary.map((s, i) => (
+              <li key={i}>{s}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {/* Suggestions */}
             {data && order.map((p) => {
                 const suggestion = data[p];
                 if (!suggestion) return null;
