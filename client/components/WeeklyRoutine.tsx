@@ -1,4 +1,6 @@
 import React from "react";
+import { Info } from "lucide-react";
+
 
 /* ---------------- Schema Types ----------------- */
 type Block = {
@@ -17,9 +19,11 @@ type Day = {
 };
 
 export type WeekData = {
-  weekOf: string;
   intervalMinutes: number;
   days: Day[];
+  changes?: {
+    summary: string[];
+  };
 };
 
 /* -------------- Helpers ------------------------- */
@@ -78,7 +82,7 @@ const DayColumn: React.FC<{ day: Day; stepPx: number; interval: number; totalHei
   <div className="relative border-l" style={{ minWidth: 160, height: totalHeight + HEADER_HEIGHT }}>
     {/* Sticky header */}
     <div
-      className="sticky top-0 z-10 bg-white text-center text-sm font-semibold py-1 border-b"
+      className="sticky top-0 z-10 bg-white text-center text-sm font-semibold py-1 border-b text-black"
       style={{ height: HEADER_HEIGHT }}
     >
       {day.day}
@@ -110,12 +114,25 @@ const WeeklyRoutineTimeline: React.FC<{ data: WeekData }> = ({data}) => {
   const ordered = daysOrder.map((d) => data.days.find((x) => x.day === d) || { day: d, blocks: [] });
 
   return (
-    <div className="flex overflow-x-auto h-screen">
-      <div className="flex overflow-y-auto">
-        <HourColumn totalHeight={totalHeight} stepPx={stepPx} interval={interval} />
-        {ordered.map((d) => (
-          <DayColumn key={d.day} day={d} stepPx={stepPx} interval={interval} totalHeight={totalHeight} />
-        ))}
+    <div className="space-y-4">
+        {/* Change summary */}
+        {data.changes?.summary?.length && (
+          <div className="bg-yellow-600/20 text-yellow-100 rounded-lg p-4 flex gap-3">
+            <Info size={18} className="mt-0.5" />
+            <ul className="list-disc list-inside text-sm space-y-1">
+              {data.changes.summary.map((s, i) => (
+                <li key={i}>{s}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      <div className="flex overflow-x-auto h-screen">
+        <div className="flex overflow-y-auto">
+          <HourColumn totalHeight={totalHeight} stepPx={stepPx} interval={interval} />
+          {ordered.map((d) => (
+            <DayColumn key={d.day} day={d} stepPx={stepPx} interval={interval} totalHeight={totalHeight} />
+          ))}
+        </div>
       </div>
     </div>
   );

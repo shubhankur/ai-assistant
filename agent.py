@@ -1,5 +1,6 @@
 import json
 import re
+import time
 from livekit.agents import llm
 from livekit.agents.voice import Agent, AgentSession, ModelSettings
 from livekit.agents.llm import ChatContext, FunctionTool, RawFunctionTool
@@ -20,6 +21,7 @@ class AssistantAgent(Agent):
         self.work_routine = None
         self.daily_essentials = None
         self.user_json_summary = None
+        self.suggest_changes_turn = 0
         self.preview_turn = 0
         self.final_routine_turn = 0
 
@@ -34,7 +36,7 @@ class AssistantAgent(Agent):
         # self._session.generate_reply(instructions=inject, allow_interruptions=False)
         await self.set_stage(3)
         chat_ctx = ChatContext.empty()
-        chat_ctx.add_message(role="user", content=PROMPTS["stage3"])
+        chat_ctx.add_message(role="user", content=PROMPTS["stage3_filled"])
         await self._session._agent.update_chat_ctx(chat_ctx=chat_ctx)
 
     async def _llm_complete(self, system_prompt: str, user_text: str) -> str:
@@ -79,7 +81,7 @@ class AssistantAgent(Agent):
             else:
                 # await self._session.current_agent.update_chat_ctx(ChatContext.empty())
                 ctx = ChatContext.empty()
-                ctx.add_message(role="system", content=[PROMPTS["draft_routine"]])
+                ctx.add_message(role="system", content=[PROMPTS["stage3"]])
                 await self._session._agent.update_chat_ctx(ctx)
                 self._session.generate_reply()
                 #stage2 to describe about app and ask if the want to conitnue is over, starting stage 3 - work routine
@@ -112,83 +114,115 @@ class AssistantAgent(Agent):
             ) as stream:
                 if(self.stage == 3):
                     print("llm_node stage3")
-                    messages = ""
-                    for message in chat_ctx.items:
-                        messages += message.text_content + "\n"
-                    print("Chat context messages:", messages)
-
                     response = ""
+                    start_time = time.time()
                     async for chunk in stream:
                         if chunk.delta and chunk.delta.content:
                             response += chunk.delta.content
-                    if(response == "SATISFIED"):
+                    print(f"Stage 3 Stream processing took {time.time() - start_time:.2f} seconds")
+                    if(response.upper() == "SATISFIED"):
                         print("llm_node stage3 satisfied")
                         await self.set_stage(4)
-                        new_prompt = PROMPTS["generate_preview_draft_json"]
+                        new_prompt = PROMPTS["stage4"]
                         chat_ctx.add_message(role="system", content=new_prompt)
                         await self._session._agent.update_chat_ctx(chat_ctx)
+                        self._session.generate_reply()
+                        raise StopResponse()
+                    elif(len(response) > 500):
+                        print("Very long response by the LLM", response)
+                        validation_prompt = PROMPTS["stage3_validate_output_1"]
+                        chat_ctx.add_message(role="system", content=validation_prompt)
                         self._session.generate_reply()
                         raise StopResponse()
                     else:
                         yield response
                 elif(self.stage == 4):
                     print("llm_node stage4")
-                    draft_routine = ""
+                    suggestion_list = ""
+                    start_time = time.time()
                     async for chunk in stream:
                         if chunk.delta and chunk.delta.content:
-                            draft_routine += chunk.delta.content
-                    print("llm_node stage4 response", draft_routine)
-                    draft_routine_json = self._parse_json(draft_routine)
-                    if(draft_routine_json.get("done")):
+                            suggestion_list += chunk.delta.content
+                    print(f"Stage 4 Stream processing took {time.time() - start_time:.2f} seconds")
+                    if suggestion_list.upper() == "SATISFIED":
                         print("llm_node stage4 satisfied")
                         await self.set_stage(5)
-                        new_prompt = PROMPTS["final_routine_draft"]
+                        new_prompt = PROMPTS["stage5"]
                         chat_ctx.add_message(role="system", content=new_prompt)
                         await self._session._agent.update_chat_ctx(chat_ctx)
                         self._session.generate_reply()
                     else:
                         #send this draft_routine to frontend
-                        print("draft_json", draft_routine_json)
+                        suggestion_list_json = self._parse_json(suggestion_list)
                         await self._session._room_io._room.local_participant.send_text (
-                            text=json.dumps(draft_routine_json),
-                            topic="drafted_routine"
+                            text=json.dumps(suggestion_list_json),
+                            topic="suggestion_list"
                         )
-                        if(self.preview_turn == 0):
-                            self._session.say(PROMPTS["turn0_prompt"])
+                        if(self.suggest_changes_turn == 0):
+                            self._session.say(PROMPTS["stage4_turn0"])
                         elif(self.preview_turn == 1):
-                            self._session.say(PROMPTS["turn1_prompt"])
+                            self._session.say(PROMPTS["stage4_turn1"])
                         else:
-                            self.session.say(PROMPTS["turn2_prompt"])
+                            self.session.say(PROMPTS["stage4_turn2"])
+                    self.suggest_changes_turn += 1
                     raise StopResponse()
                 elif(self.stage == 5):
                     print("llm_node stage5")
-                    messages = ""
-                    for message in chat_ctx.items:
-                        messages += message.text_content + "\n"
-                    print("Chat context messages:", messages)
-                    weekly_routine_json = ""
+                    routine_preview = ""
+                    start_time = time.time()
                     async for chunk in stream:
                         if chunk.delta and chunk.delta.content:
-                            weekly_routine_json += chunk.delta.content
-                    print("llm_node stage5 response", weekly_routine_json)
-                    parsed_json = self._parse_json(weekly_routine_json)
-                    if(parsed_json and parsed_json.get("SATISFIED")):
+                            routine_preview += chunk.delta.content
+                    print(f"Stage 5 Stream processing took {time.time() - start_time:.2f} seconds")
+                    if(routine_preview.upper() == "SATISFIED"):
                         print("llm_node stage5 satisfied")
                         await self.set_stage(6)
+                        new_prompt = PROMPTS["stage6"]
+                        chat_ctx.add_message(role="system", content=new_prompt)
+                        await self._session._agent.update_chat_ctx(chat_ctx)
+                        self._session.generate_reply()
+                    else:
+                        #send this draft_routine to frontend
+                        routine_preview_json = self._parse_json(routine_preview)
+                        await self._session._room_io._room.local_participant.send_text (
+                            text=json.dumps(routine_preview_json),
+                            topic="routine_preview"
+                        )
+                        if(self.preview_turn == 0):
+                            self._session.say(PROMPTS["stage5_turn0"])
+                        elif(self.preview_turn == 1):
+                            self._session.say(PROMPTS["stage5_turn1"])
+                        else:
+                            self.session.say(PROMPTS["stage5_turn2"])
+                    self.preview_turn += 1
+                    raise StopResponse()
+                elif(self.stage == 6):
+                    print("llm_node stage6")
+                    weekly_routine = ""
+                    start_time = time.time()
+                    async for chunk in stream:
+                        if chunk.delta and chunk.delta.content:
+                            weekly_routine += chunk.delta.content
+                    print(f"Stage 6 Stream processing took {time.time() - start_time:.2f} seconds")
+                    if(weekly_routine.upper() == "SATISFIED"):
+                        print("llm_node stage6 satisfied")
+                        await self.set_stage(7)
                         #done
                         #we can terminate the room
                     else:
                         #send to front_end
+                        weekly_routine_json = self._parse_json(weekly_routine)
                         await self._session._room_io._room.local_participant.send_text (
                             text=json.dumps(weekly_routine_json),
                             topic="weekly_routine"
                         )
                         if(self.final_routine_turn == 0):
-                            self._session.say(PROMPTS["turn0_prompt"])
+                            self._session.say(PROMPTS["stage6_turn0"])
                         elif(self.final_routine_turn == 1):
-                            self._session.say(PROMPTS["turn1_prompt"])
+                            self._session.say(PROMPTS["stage6_turn1"])
                         else:
-                            self.session.say(PROMPTS["turn2_prompt"])
+                            self.session.say(PROMPTS["stage6_turn2"])
+                    self.final_routine_turn += 1
                     raise StopResponse()
                 else:
                     async for chunk in stream:
