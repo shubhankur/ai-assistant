@@ -3,18 +3,12 @@ PROMPTS = {
         "Speak like a human conversation with calm and soothing tone."
     ),
     "greeting": "Hello! How are you feeling today?",
-    "analyze_user_feeling": (
-        "Analyze user feeling and respond only with JSON matching the format "
-        '{"feeling": {"primary": "emotion", "secondary": null}, '
-        '"voice_tone": "appropriate combination of voice properties for the agent based on user\'s feeling"}'
-        " Do not include any other text."
-    ),
-    "app_details": (
+    "stage2": (
         "User is feeling {user_feeling}. First, understand what user is feeling, connect emotionally with them and then tell them how can you help them. "
         "I am your personal assistant. Powered by AI. Built just for you. "
         "I will help you organize your life and declutter your mind. Ask them if they have 5 uninterrupted minutes to continue or do they want to come back later."
     ),
-    "validate_if_continue": "Validate if user wants to continue. Just return 'YES' or 'NO'.",
+    "stage2_is_user_continue": "Validate if user wants to continue. Just return 'YES' or 'NO'.",
     "farewell": "Thank you.",
     
     #stage3 prompt - Collection
@@ -33,11 +27,12 @@ Probe only until you are confident you can schedule the week without guessing an
 Step2:Ask them their desired changes to their currrent routine, what are the things or habits they want to remove and add.
 
 Rules  
-• One concise topic-focused question per turn.  
+• One concise topic-focused question per turn.
+- Do not give examples unless user asks for it.
+- If suggests they are not sure about timings of some activity, don't probe too much.
 • No small talk, well-being questions
-    - dont reiterate or confirm what user said, it will make them impatient and waste their time.
-    - Focus particularly on specifics.
-    - Don't ask too many questions, there can be cases when the user is unsure or does not have specific answer.
+- dont reiterate or confirm what user said, it will make them impatient and waste their time.
+- Don't ask too many questions, there can be cases when the user is unsure or does not have specific answer.
 Understand user's routine deeply, engaging in a multi turn conversation.
 Remember that this is to be used for thousands of users and they should not feel like this is an AI. 
 And you must create an effeective, sepcific and detailed plan.
@@ -92,7 +87,7 @@ This response/question to the user is too long and unnecessary, revaluate and ge
    Does this look good to you? Or do you want some changes.
    '''),
 
-   "stage4_turn1": (
+   "stage4_turn1_old": (
      ''' How about now ! Keep in mind that we are just drafting a base line right now and we will deal more with specifics on day to day basis while generating your
      daily routine. So if this is borderline okay. We can proceed for now.
      '''
@@ -138,7 +133,7 @@ This response/question to the user is too long and unnecessary, revaluate and ge
           "end":   "HH:MM",
           "activityName": "<Reading | Office | Lunch …>",
           "location": "<optional>",       // e.g. Office, Home, Gym
-          "category": "work"| "workout" | "sleep" | "relax" (e.g reading, meditation, unwind) | "routine" (e.g. meals, hygiene, misc daily ) | "goals" (e.g. side‑projects, self improvements) | "other";
+          "category": "work"| "workout" | "sleep" | "relax" (e.g reading, meditation, unwind) | "routine" (e.g. meals, hygiene, misc daily ) | "goals" (e.g. side‑projects, self improvements) | "hobby" | "other",
           "details": "<optional free text>"
         }
         /* additional chronological blocks; touching identical activities are merged */
@@ -187,10 +182,9 @@ This response/question to the user is too long and unnecessary, revaluate and ge
                     "start": "HH:MM",              // ISO-8601 time, 24-h clock
                     "end":   "HH:MM",              // merged if same label & category touch
                     "label": "<Work | Sleep | Gym …>",
-                    "category": "work|routine|hobby|goal|other",
+                    "category": "work"| "workout" | "sleep" | "relax" (e.g reading, meditation, unwind) | "routine" (e.g. meals, hygiene, misc daily ) | "goals" (e.g. side‑projects, self improvements) | "hobby" | "other";
                     "location": "<optional>",      // e.g. “Office”, “Home”, “Gym”
                     "details":  "<optional free text>",
-                    "color":    "<optional hex>"   // lets the agent suggest a UI colour
                     }
                     /* additional blocks… */
                 ]
@@ -229,14 +223,15 @@ Step1: their current daily routine:
 4. Hobbies: what are the things they do and like to do in their free time. How important are these activities, When do they usually like to unwind or relax and what do they do for it.
 Probe only until you are confident you can schedule the week without guessing and then move to next step.
 
-Step2: Ask them their desired changes to their currrent routine, what are the things or habits they want to remove and add.
+Step2:Ask them their desired changes to their currrent routine, what are the things or habits they want to remove and add.
 
 Rules  
-• One concise topic-focused question per turn.  
+• One concise topic-focused question per turn.
+- Do not give examples unless user asks for it.
+- If suggests they are not sure about timings of some activity, don't probe too much.
 • No small talk, well-being questions
-    - dont reiterate or confirm what user said, it will make them impatient and waste their time.
-    - Focus particularly on specifics.
-    - Don't ask too many questions, there can be cases when the user is unsure or does not have specific answer.
+- dont reiterate or confirm what user said, it will make them impatient and waste their time.
+- Don't ask too many questions, there can be cases when the user is unsure or does not have specific answer.
 Understand user's routine deeply, engaging in a multi turn conversation.
 Remember that this is to be used for thousands of users and they should not feel like this is an AI. 
 And you must create an effeective, sepcific and detailed plan.
