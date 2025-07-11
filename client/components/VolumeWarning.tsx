@@ -1,42 +1,17 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { Volume2, VolumeX } from 'lucide-react';
-import { useEffect, useState } from 'react';
 
 interface VolumeWarningProps {
   volume: number;
 }
 
 export function VolumeWarning({ volume }: VolumeWarningProps) {
-  const [showWarning, setShowWarning] = useState(false);
-  const [lowVolumeStartTime, setLowVolumeStartTime] = useState<number | null>(null);
-  
-  const VOLUME_THRESHOLD = 0.3;  // Threshold for low volume
-  const WARNING_DELAY = 1500;    // Show warning after 1.5 seconds of low volume
-  
-  useEffect(() => {
-    const isLowVolume = volume < VOLUME_THRESHOLD;
-    
-    if (isLowVolume && !lowVolumeStartTime) {
-      // Start timing when volume first goes low
-      setLowVolumeStartTime(Date.now());
-    } else if (!isLowVolume) {
-      // Reset when volume is okay
-      setLowVolumeStartTime(null);
-      setShowWarning(false);
-    } else if (isLowVolume && lowVolumeStartTime) {
-      // Check if we've been at low volume long enough to show warning
-      const timeInLowVolume = Date.now() - lowVolumeStartTime;
-      if (timeInLowVolume >= WARNING_DELAY) {
-        setShowWarning(true);
-      }
-    }
-  }, [volume, lowVolumeStartTime]);
-
+  const isLowVolume = volume < 0.3; // Threshold for low volume
   const volumePercentage = Math.round(volume * 100);
 
   return (
     <AnimatePresence>
-      {showWarning && (
+      {isLowVolume && (
         <motion.div
           initial={{ opacity: 0, y: -20, scale: 0.9 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}

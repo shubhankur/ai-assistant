@@ -13,7 +13,6 @@ import { VolumeWarning } from '@/components/VolumeWarning';
 
 function SessionContent() {
   const {state, agentAttributes, audioTrack} = useVoiceAssistant();
-  const volume = useTrackVolume(audioTrack)
   console.log("state: ", state)
   const stage = Number(agentAttributes?.stage ?? 1);
 
@@ -75,12 +74,10 @@ function SessionContent() {
   }, [weekStreams]);
 
   console.log("stage", stage)
-  console.log("volume", volume)
   return (
     <div className="relative flex flex-col w-full h-full items-center">
-      {/* Volume Warning */}
-      {state.startsWith("speaking") &&
-      <VolumeWarning volume={volume} /> }
+      {/* ToDo; Get device volume when media is being played and use that*/}  
+      <VolumeWarning volume={1} />
       <AnimatePresence mode="wait">
         {(
           <motion.div
