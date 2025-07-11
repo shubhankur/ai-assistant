@@ -75,12 +75,6 @@ class AssistantAgent(Agent):
     async def on_user_turn_completed(
         self, turn_ctx: llm.ChatContext, new_message: llm.ChatMessage
     ) -> None:
-        # Concatenate and print messages from turn context
-        messages_text = ""
-        for msg in turn_ctx.items:
-            if msg.text_content:
-                messages_text += "".join(msg.text_content) + "\n"
-        print("Messages from turn context:", messages_text)
         if self.stage == 2:
             system_prompt = PROMPTS["stage2_is_user_continue"]
             await self.add_system_message(turn_ctx, system_prompt)
