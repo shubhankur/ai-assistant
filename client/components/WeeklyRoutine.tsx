@@ -1,141 +1,315 @@
-import React from "react";
-import { Info } from "lucide-react";
+"use client"
 
+import { useState, useMemo } from "react"
+import { Clock, ChevronDown, ChevronRight } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
 
-/* ---------------- Schema Types ----------------- */
-type Block = {
-  start: string;
-  end: string;
-  label: string;
-  category: "work" | "routine" | "hobby" | "goal" | "other";
-  location?: string;
-  details?: string;
-  color?: string; // agent‑supplied override
-};
+interface Block {
+  start: string
+  end: string
+  label: string
+  category: string
+  location?: string
+}
 
-type Day = {
-  day: "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat" | "Sun";
-  blocks: Block[];
-};
+interface Day {
+  day: string
+  blocks: Block[]
+}
 
-export type WeekData = {
-  intervalMinutes: number;
-  days: Day[];
-  changes?: {
-    summary: string[];
-  };
-};
+export interface RoutineData {
+  days: Day[]
+}
 
-/* -------------- Helpers ------------------------- */
-// Base colours by top‑level category
-const categoryHex: Record<Block["category"], string> = {
-  work: "#3b82f6",     // blue‑500
-  routine: "#10b981",  // emerald‑500
-  hobby: "#9333ea",    // purple‑600
-  goal: "#f59e0b",     // amber‑500
-  other: "#6b7280"      // gray‑500
-};
+export interface WeeklyRoutinePreviewProps {
+  data: RoutineData
+}
 
-// Specific routine anchors that deserve their own distinct colour
-const specificHex: Record<string, string> = {
-  sleep: "#06b6d4",     // cyan‑500
-  workout: "#ef4444",   // red‑500
-  gym: "#ef4444"        // map "Gym" to same red
-};
+const categoryColors = {
+  routine: "bg-slate-100 border-slate-300 text-slate-700",
+  work: "bg-blue-100 border-blue-300 text-blue-800",
+  physical: "bg-emerald-100 border-emerald-300 text-emerald-800",
+  mindful: "bg-purple-100 border-purple-300 text-purple-800",
+  sleep: "bg-indigo-100 border-indigo-300 text-indigo-800",
+  goal: "bg-orange-100 border-orange-300 text-orange-800",
+  hobby: "bg-rose-100 border-rose-300 text-rose-800",
+}
 
-const toMinutes = (t: string) => {
-  const [h, m] = t.replace("+1", "").split(":").map(Number);
-  return h * 60 + m;
-};
+const categoryDots = {
+  routine: "bg-slate-400",
+  work: "bg-blue-500",
+  physical: "bg-emerald-500",
+  mindful: "bg-purple-500",
+  sleep: "bg-indigo-600",
+  goal: "bg-orange-500",
+  hobby: "bg-rose-500",
+}
 
-const daysOrder: Day["day"][] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+function parseTime(timeStr: string): { hours: number; minutes: number; nextDay: boolean } {
+  const nextDay = timeStr.includes("+1")
+  const cleanTime = timeStr.replace("+1", "")
+  const [hours, minutes] = cleanTime.split(":").map(Number)
+  return { hours, minutes, nextDay }
+}
 
-const getBlockColor = (b: Block): string => {
-  if (b.color) return b.color;
-  const key = b.label.toLowerCase();
-  if (specificHex[key]) return specificHex[key];
-  return categoryHex[b.category];
-};
+function getTimeInMinutes(timeStr: string): number {
+  const { hours, minutes, nextDay } = parseTime(timeStr)
+  return (nextDay ? 24 * 60 : 0) + hours * 60 + minutes
+}
 
-/* -------------- Components ---------------------- */
-const HOUR_LABEL_WIDTH = 60; // px
-const HEADER_HEIGHT = 24; // px sticky day header height
+function generateHourSlots(): string[] {
+  const slots = []
+  for (let hour = 6; hour <= 23; hour++) {
+    slots.push(`${hour.toString().padStart(2, "0")}:00`)
+  }
+  // Add early morning hours for next day
+  for (let hour = 0; hour <= 5; hour++) {
+    slots.push(`${hour.toString().padStart(2, "0")}:00`)
+  }
+  return slots
+}
 
-const HourColumn: React.FC<{ totalHeight: number; stepPx: number; interval: number }> = ({ totalHeight, stepPx, interval }) => (
-  <div
-    className="relative select-none text-right pr-2"
-    style={{ minWidth: HOUR_LABEL_WIDTH, height: totalHeight + HEADER_HEIGHT }}
-  >
-    {Array.from({ length: 25 }).map((_, i) => (
-      <div
-        key={i}
-        className="absolute left-0 w-full text-[10px] text-white"
-        style={{ top: HEADER_HEIGHT + (i * 60 * stepPx) / interval }}
-      >
-        {i === 24 ? "" : `${i}:00`}
-      </div>
-    ))}
-  </div>
-);
+function formatTime12Hour(timeStr: string): string {
+  const { hours, minutes } = parseTime(timeStr)
+  const period = hours >= 12 ? "PM" : "AM"
+  const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours
+  return `${displayHours}:${minutes.toString().padStart(2, "0")} ${period}`
+}
 
-const DayColumn: React.FC<{ day: Day; stepPx: number; interval: number; totalHeight: number }> = ({ day, stepPx, interval, totalHeight }) => (
-  <div className="relative border-l" style={{ minWidth: 160, height: totalHeight + HEADER_HEIGHT }}>
-    {/* Sticky header */}
-    <div
-      className="sticky top-0 z-10 bg-white text-center text-sm font-semibold py-1 border-b text-black"
-      style={{ height: HEADER_HEIGHT }}
-    >
-      {day.day}
+export default function WeeklyRoutinePreview({ data }: WeeklyRoutinePreviewProps) {
+  const [viewMode, setViewMode] = useState<"desktop" | "mobile">("mobile")
+  const [collapsedDays, setCollapsedDays] = useState<Set<string>>(new Set())
+
+  const hourSlots = useMemo(() => generateHourSlots(), [])
+
+  const toggleDayCollapse = (dayName: string) => {
+    const newCollapsed = new Set(collapsedDays)
+    if (newCollapsed.has(dayName)) {
+      newCollapsed.delete(dayName)
+    } else {
+      newCollapsed.add(dayName)
+    }
+    setCollapsedDays(newCollapsed)
+  }
+
+  const DesktopView = () => (
+    <div className="space-y-4">
+      {data.days.map((day) => (
+        <Card key={day.day} className="bg-white/80 backdrop-blur-sm border-0 shadow-lg overflow-hidden">
+          <div
+            className="flex items-center gap-3 p-4 cursor-pointer hover:bg-slate-50/50 transition-colors"
+            onClick={() => toggleDayCollapse(day.day)}
+          >
+            {collapsedDays.has(day.day) ? (
+              <ChevronRight className="w-4 h-4 text-slate-500" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-slate-500" />
+            )}
+            <h3 className="text-xl font-semibold text-slate-800">{day.day}</h3>
+            <div className="h-px bg-slate-200 flex-1" />
+            <span className="text-sm text-slate-500">{day.blocks.length} activities</span>
+          </div>
+
+          {!collapsedDays.has(day.day) && (
+            <div className="px-4 pb-4">
+              <div className="space-y-2">
+                {day.blocks.map((block, index) => (
+                  <div
+                    key={index}
+                    className={`flex items-center gap-4 p-3 rounded-lg border-l-4 ${categoryColors[block.category as keyof typeof categoryColors]}`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <div
+                        className={`w-2 h-2 rounded-full ${categoryDots[block.category as keyof typeof categoryDots]}`}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="font-medium text-sm truncate">{block.label}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 text-xs font-mono bg-white/50 px-2 py-1 rounded">
+                      <Clock className="w-3 h-3" />
+                      <span>
+                        {formatTime12Hour(block.start)} - {formatTime12Hour(block.end)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </Card>
+      ))}
     </div>
+  )
 
-    {day.blocks.map((b, i) => {
-      const top = HEADER_HEIGHT + (toMinutes(b.start) / interval) * stepPx;
-      const height = ((toMinutes(b.end) - toMinutes(b.start)) / interval) * stepPx;
-      const bg = getBlockColor(b);
-      const tooltip = `${b.label} (${b.start}-${b.end})${b.location ? ` @ ${b.location}` : ""}${b.details ? ` • ${b.details}` : ""}`;
-      return (
-        <div
-          key={i}
-          className="absolute left-1 right-1 rounded-sm text-white text-xs px-1 overflow-hidden"
-          style={{ top, height, backgroundColor: bg }}
-          title={tooltip}
-        >
-          {height > 14 ? b.label : ""}
-        </div>
-      );
-    })}
-  </div>
-);
+  const MobileView = () => {
+    // Calculate the grid layout for each day
+    const dayGridData = useMemo(() => {
+      return data.days.map((day) => {
+        const gridData: { [key: string]: any[] } = {}
 
-const WeeklyRoutineTimeline: React.FC<{ data: WeekData }> = ({data}) => {
-  const interval = data.intervalMinutes;
-  const stepPx = 20;
-  const totalHeight = (1440 / interval) * stepPx;
-  const ordered = daysOrder.map((d) => data.days.find((x) => x.day === d) || { day: d, blocks: [] });
+        hourSlots.forEach((hourSlot) => {
+          const hourMinutes = getTimeInMinutes(hourSlot)
+          const nextHourMinutes = hourMinutes + 60
+
+          // Find all blocks that span across this hour
+          const blocksInHour = day.blocks.filter((block) => {
+            const startMinutes = getTimeInMinutes(block.start)
+            const endMinutes = getTimeInMinutes(block.end)
+            return startMinutes < nextHourMinutes && endMinutes > hourMinutes
+          })
+
+          // For each block, calculate its position and determine if it should show text
+          const processedBlocks = blocksInHour.map((block) => {
+            const startMinutes = getTimeInMinutes(block.start)
+            const endMinutes = getTimeInMinutes(block.end)
+            const blockDurationMinutes = endMinutes - startMinutes
+
+            // Calculate position within this hour
+            const startPosition = Math.max(0, (startMinutes - hourMinutes) / 60)
+            const endPosition = Math.min(1, (endMinutes - hourMinutes) / 60)
+
+            // Calculate the absolute middle time of the entire block
+            const blockMiddleMinutes = (startMinutes + endMinutes) / 2
+            const currentHourMiddleMinutes = hourMinutes + 30
+
+            // Show text in the hour slot that contains the middle of the block
+            const shouldShowText =
+              blockMiddleMinutes >= hourMinutes && blockMiddleMinutes < nextHourMinutes && blockDurationMinutes > 15
+
+            return {
+              ...block,
+              startPosition,
+              endPosition,
+              height: endPosition - startPosition,
+              durationMinutes: blockDurationMinutes,
+              shouldShowText,
+              blockId: `${block.label}-${block.category}-${startMinutes}`,
+            }
+          })
+
+          gridData[hourSlot] = processedBlocks
+        })
+
+        return { day: day.day, gridData }
+      })
+    }, [data.days, hourSlots])
+
+    return (
+      <div className="space-y-4">
+        {/* Grid View */}
+        <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg overflow-hidden">
+          <div className="overflow-auto max-h-[70vh]">
+            <div className="min-w-max">
+              {/* Header */}
+              <div
+                className="grid bg-slate-200 sticky top-0 z-20"
+                style={{ gridTemplateColumns: `120px repeat(${data.days.length}, 140px)` }}
+              >
+                <div className="bg-slate-50 p-3 text-xs font-medium text-slate-600 text-center sticky left-0 z-30 border-r border-slate-200">
+                  Time
+                </div>
+                {data.days.map((day) => (
+                  <div
+                    key={day.day}
+                    className="bg-slate-50 p-3 text-xs font-medium text-slate-700 text-center border-r border-slate-200 last:border-r-0"
+                  >
+                    {day.day}
+                  </div>
+                ))}
+              </div>
+
+              {/* Hour slots */}
+              <div
+                className="bg-slate-200"
+                style={{ display: "grid", gridTemplateColumns: `120px repeat(${data.days.length}, 140px)` }}
+              >
+                {hourSlots.map((hourSlot, hourIndex) => (
+                  <div key={hourSlot} className="contents">
+                    <div className="bg-white p-2 text-xs font-mono text-slate-500 text-center sticky left-0 z-10 border-r border-slate-200 border-b border-slate-200">
+                      {formatTime12Hour(hourSlot)}
+                    </div>
+                    {dayGridData.map((dayData, dayIndex) => {
+                      const blocksInHour = dayData.gridData[hourSlot] || []
+
+                      return (
+                        <div
+                          key={`${dayData.day}-${hourSlot}`}
+                          className="relative min-h-[3rem] bg-white border-r border-slate-200 border-b border-slate-200 last:border-r-0"
+                          style={{ minHeight: "3rem" }}
+                        >
+                          {blocksInHour.map((block, blockIndex) => (
+                            <div
+                              key={`${block.blockId}-${blockIndex}`}
+                              className={`absolute inset-x-0 flex items-center justify-center p-1 ${
+                                categoryColors[block.category as keyof typeof categoryColors]
+                              }`}
+                              style={{
+                                top: `${block.startPosition * 100}%`,
+                                height: `${block.height * 100}%`,
+                                minHeight: "0.5rem",
+                                left: "1px",
+                                right: "1px",
+                              }}
+                            >
+                              {block.shouldShowText && (
+                                <div className="text-center w-full px-1">
+                                  <div className="font-semibold text-xs leading-tight truncate">{block.label}</div>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        {/* Legend */}
+        <Card className="p-3 bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            {Object.entries(categoryColors).map(([category, colorClass]) => (
+              <div key={category} className="flex items-center gap-2">
+                <div className={`w-3 h-3 rounded-full ${categoryDots[category as keyof typeof categoryDots]}`} />
+                <span className="capitalize text-slate-600">{category}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-4">
-        {/* Change summary */}
-        {data.changes?.summary?.length && (
-          <div className="bg-yellow-600/20 text-yellow-100 rounded-lg p-4 flex gap-3">
-            <Info size={18} className="mt-0.5" />
-            <ul className="list-disc list-inside text-sm space-y-1">
-              {data.changes.summary.map((s, i) => (
-                <li key={i}>{s}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-      <div className="flex overflow-x-auto h-screen">
-        <div className="flex overflow-y-auto">
-          <HourColumn totalHeight={totalHeight} stepPx={stepPx} interval={interval} />
-          {ordered.map((d) => (
-            <DayColumn key={d.day} day={d} stepPx={stepPx} interval={interval} totalHeight={totalHeight} />
-          ))}
+      {/* View Toggle */}
+      <div className="flex justify-center">
+        <div className="bg-white/80 backdrop-blur-sm rounded-lg p-1 shadow-lg">
+          <Button
+            variant={viewMode === "desktop" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setViewMode("desktop")}
+            className="text-xs"
+          >
+            Timeline View
+          </Button>
+          <Button
+            variant={viewMode === "mobile" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setViewMode("mobile")}
+            className="text-xs"
+          >
+            Grid View
+          </Button>
         </div>
       </div>
-    </div>
-  );
-};
 
-export default WeeklyRoutineTimeline;
+      {viewMode === "desktop" ? <DesktopView /> : <MobileView />}
+    </div>
+  )
+}
