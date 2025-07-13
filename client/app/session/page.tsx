@@ -75,7 +75,7 @@ function SessionContent() {
 
   console.log("stage", stage)
   return (
-    <div className="relative flex flex-col w-full h-full items-center">
+    <div className="relative flex flex-col w-full min-h-screen h-full items-center breathe-background">
       {/* ToDo; Get device volume when media is being played and use that*/}  
       <VolumeWarning volume={1} />
       <AnimatePresence mode="wait">
