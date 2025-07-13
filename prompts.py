@@ -128,14 +128,8 @@ Capture user's aspirations and desired changes in the JSON schema below:
     #stage5 prompt - Suggestions
 "stage5" :(
     '''
-    Based on Context:
-• schedule   – user’s current Monday–Sunday routine.
-• aspirations – goals, lifestyle_changes, activities_to_add, activities_to_remove.
-
-Role:
-Act as a Licensed Occupational Therapist / Lifestyle Medicine Physician.
-
-Task:
+    Based on Conversation with the user about their Current Routine and their aspirations and desired routine changes:
+Act as a Licensed Occupational Therapist / Lifestyle Medicine Physician
 Propose evidence-based modifications that move the user from their current routine toward their aspirations.
 
 Rules
