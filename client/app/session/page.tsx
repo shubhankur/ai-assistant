@@ -1,18 +1,19 @@
 'use client'
-import { useEffect, useState } from 'react';
-import { BarVisualizer, DisconnectButton, VoiceAssistantControlBar, useVoiceAssistant, useTextStream, useTrackToggle, RoomAudioRenderer, useLocalParticipant } from '@livekit/components-react';
+import { useEffect, useState, useRef } from 'react';
+import { BarVisualizer, DisconnectButton, VoiceAssistantControlBar, useVoiceAssistant, useTextStream, useTrackToggle, RoomAudioRenderer, useLocalParticipant, useTrackVolume } from '@livekit/components-react';
 import { NoAgentNotification } from "@/components/NoAgentNotification";
 import ConnectRoom from '../../components/ConnectRoom';
 import TranscriptionView from '@/components/TranscriptionView'
-import WeeklyRoutineTimeline, { WeekData } from '@/components/WeeklyRoutine';
+import WeeklyRoutinePreview, { RoutineData } from '@/components/WeeklyRoutine';
 import { AnimatePresence, motion } from "framer-motion";
 // import { AnchorsDashboard, Anchor } from '@/components/AnchorsDashboard';
 import { RoutineSummary } from '@/components/RoutineSummary';
 import { SuggestionList } from '@/components/SuggestionList';
+import { VolumeWarning } from '@/components/VolumeWarning';
 
 function SessionContent() {
-  const {state: agentState, agentAttributes} = useVoiceAssistant();
-  console.log("state: ", agentState)
+  const {state, agentAttributes, audioTrack} = useVoiceAssistant();
+  console.log("state: ", state)
   const stage = Number(agentAttributes?.stage ?? 1);
 
   const { textStreams: suggestedChangesStreams } = useTextStream("suggestion_list");
@@ -22,7 +23,7 @@ function SessionContent() {
   const [suggestedChanges, setSuggestedChanges] = useState()
   // const [anchors, setAnchors] = useState<Anchor[]>([])
   const [routineSummary, setRoutineSummary] = useState()
-  const [weekData, setWeekData] = useState<WeekData>()
+  const [weekData, setWeekData] = useState<RoutineData>()
 
   /* ------------- whenever the suggested changes arrives ----------------- */
   useEffect(() => {
@@ -66,7 +67,7 @@ function SessionContent() {
     try {
       const parsed = JSON.parse(latest);
       console.log("weekStreams_parsed", parsed)
-      if (parsed.days) setWeekData(parsed as WeekData);
+      if (parsed.days) setWeekData(parsed as RoutineData);
     } catch (e) {
       console.error("failed to parse weekData payload", e);
     }
@@ -75,6 +76,8 @@ function SessionContent() {
   console.log("stage", stage)
   return (
     <div className="relative flex flex-col w-full h-full items-center">
+      {/* ToDo; Get device volume when media is being played and use that*/}  
+      <VolumeWarning volume={1} />
       <AnimatePresence mode="wait">
         {(
           <motion.div
@@ -85,6 +88,8 @@ function SessionContent() {
             transition={{ duration: 0.3, ease: [0.09, 1.04, 0.245, 1.055] }}
             className="flex flex-col items-center"
           >
+            {/* ToDo: Add a skip or continue later button */}
+
             <AgentVisualizer />
             {stage < 4 && 
             (
@@ -102,11 +107,12 @@ function SessionContent() {
             }
 
             {stage == 6 && weekData &&
-              <WeeklyRoutineTimeline data = {weekData} />
+              /* ToDo; Button: is this routine okay or very wrong */
+              <WeeklyRoutinePreview data = {weekData} />
             }
             
             <RoomAudioRenderer />
-            <NoAgentNotification state={agentState} />
+            <NoAgentNotification state={state} />
           </motion.div>
         )}
       </AnimatePresence>

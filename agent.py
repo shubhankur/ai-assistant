@@ -21,23 +21,31 @@ class AssistantAgent(Agent):
         self.work_routine = None
         self.daily_essentials = None
         self.user_json_summary = None
-        self.suggest_changes_turn = 0
-        self.preview_turn = 0
-        self.final_routine_turn = 0
+        self.stage2_turn = 0
+        self.stage4_turn = 0
+        self.stage5_turn = 0
+        self.stage6_turn = 0
 
-    async def on_enter(self) -> None:
+    async def on_startup(self) -> None:
         # wait for user feelings to be provided before speaking
-        self.stage = 1
+        # await self.set_stage(3) #ToDo: Set back to 1
+        # chat_ctx = ChatContext.empty()
+        # chat_ctx.add_message(role="system", content=PROMPTS["stage3"])
+        # await self._session._agent.update_chat_ctx(chat_ctx=chat_ctx)
+        # self._session.generate_reply()
+        pass
 
     async def start_with_feeling(self, feeling: str) -> None:
         self.user_feeling = feeling
-        # await self.set_stage(2)
-        # inject = PROMPTS["app_details"].format(user_feeling=feeling)
-        # self._session.generate_reply(instructions=inject, allow_interruptions=False)
-        await self.set_stage(3)
-        chat_ctx = ChatContext.empty()
-        chat_ctx.add_message(role="user", content=PROMPTS["stage3_filled"])
-        await self._session._agent.update_chat_ctx(chat_ctx=chat_ctx)
+        await self.set_stage(2)
+        new_prompt = PROMPTS["stage2"].format(user_feeling=feeling)
+        self._session.generate_reply(instructions=new_prompt, allow_interruptions=False)
+        #user responds if they want to continue
+
+        # When testing start directly at the end of stage 3 
+        # await self.set_stage(3)
+        # new_prompt = PROMPTS["stage3_filled"]
+        # await self.add_system_message(ChatContext.empty(), new_prompt)
 
     async def _llm_complete(self, system_prompt: str, user_text: str) -> str:
         ctx = ChatContext.empty()
@@ -67,30 +75,19 @@ class AssistantAgent(Agent):
     async def on_user_turn_completed(
         self, turn_ctx: llm.ChatContext, new_message: llm.ChatMessage
     ) -> None:
-        text = new_message.text_content or ""
         if self.stage == 2:
-            validation_prompt = PROMPTS["validate_if_continue"] #validate if user replied that they want to continue or not.
-            resp = await self._llm_complete(validation_prompt, text)
-            print("llm_response", resp)
-            await self._session.current_agent.update_chat_ctx(ChatContext.empty())
-            self._session.clear_user_turn()
-            answer = resp.strip().upper()
-            if answer.startswith("NO"):
-                self._session.say(PROMPTS["farewell"], allow_interruptions=False, add_to_chat_ctx=False)
-                self.stage = -1
-            else:
-                # await self._session.current_agent.update_chat_ctx(ChatContext.empty())
-                ctx = ChatContext.empty()
-                ctx.add_message(role="system", content=[PROMPTS["stage3"]])
-                await self._session._agent.update_chat_ctx(ctx)
-                self._session.generate_reply()
-                #stage2 to describe about app and ask if the want to conitnue is over, starting stage 3 - work routine
-                self.stage = 3 
-            #stop agent from replying and generate a new reply instead
-            raise StopResponse()
+            system_prompt = PROMPTS["stage2_is_user_continue"]
+            await self.add_system_message(turn_ctx, system_prompt)
+            self.stage2_turn += 1
         elif self.stage == 3:
             pass
         elif self.stage == 4:
+            if self.stage4_turn > 0:
+                # user has seen stage4 response and has provided their requested change once, 
+                # we will capture their request but do not need to regenerate the response.
+                await self.update_stage(6, turn_ctx) #skipping stage 5
+                raise StopResponse()
+        elif self.stage == 6:
             pass
 
     async def llm_node(
@@ -112,7 +109,26 @@ class AssistantAgent(Agent):
             async with activity_llm.chat(
                 chat_ctx=chat_ctx, tools=tools, tool_choice=tool_choice, conn_options=conn_options
             ) as stream:
-                if(self.stage == 3):
+                if(self.stage == 2):
+                    if(self.stage2_turn == 0):
+                        async for chunk in stream:
+                            yield chunk
+                    else:
+                        print("llm_node stage2")
+                        response = ""
+                        async for chunk in stream:
+                            if chunk.delta and chunk.delta.content:
+                                response += chunk.delta.content
+                        print("llm node stage 2 response")
+                        if(response == "NO"):
+                            await self.set_stage(-1)
+                            system_message = PROMPTS["farewell"]
+                            await self.add_system_message(chat_ctx, system_message)
+                            self._session.generate_reply()
+                        else:
+                            await self.update_stage(3, ChatContext.empty())
+                            raise StopResponse()
+                elif(self.stage == 3):
                     print("llm_node stage3")
                     response = ""
                     start_time = time.time()
@@ -121,19 +137,16 @@ class AssistantAgent(Agent):
                             response += chunk.delta.content
                     print(f"Stage 3 Stream processing took {time.time() - start_time:.2f} seconds")
                     if(response.upper() == "SATISFIED"):
-                        print("llm_node stage3 satisfied")
-                        await self.set_stage(4)
-                        new_prompt = PROMPTS["stage4"]
-                        chat_ctx.add_message(role="system", content=new_prompt)
-                        await self._session._agent.update_chat_ctx(chat_ctx)
-                        self._session.generate_reply()
+                        await self.update_stage(4, chat_ctx)
                         raise StopResponse()
-                    elif(len(response) > 500):
-                        print("Very long response by the LLM", response)
-                        validation_prompt = PROMPTS["stage3_validate_output_1"]
-                        chat_ctx.add_message(role="system", content=validation_prompt)
-                        self._session.generate_reply()
-                        raise StopResponse()
+                            #ToDo: Think of better validation
+                            # elif(len(response) > 500):
+                            #     print("Very long response by the LLM", response)
+                            #     validation_prompt = PROMPTS["stage3_validate_output_1"]
+                            #     chat_ctx.add_message(role="system", content=validation_prompt)
+                            #     self._session.say("Well, forget what I just said! Hold on a sec, and I will be back!")
+                            #     self._session.generate_reply()
+                            #     raise StopResponse()
                     else:
                         yield response
                 elif(self.stage == 4):
@@ -144,29 +157,21 @@ class AssistantAgent(Agent):
                         if chunk.delta and chunk.delta.content:
                             suggestion_list += chunk.delta.content
                     print(f"Stage 4 Stream processing took {time.time() - start_time:.2f} seconds")
-                    if suggestion_list.upper() == "SATISFIED":
-                        print("llm_node stage4 satisfied")
-                        await self.set_stage(5)
-                        new_prompt = PROMPTS["stage5"]
-                        chat_ctx.add_message(role="system", content=new_prompt)
-                        await self._session._agent.update_chat_ctx(chat_ctx)
-                        self._session.generate_reply()
+                    suggestion_list_json = self._parse_json(suggestion_list)
+                    if(suggestion_list_json is None):
+                        #ToDo: Think what can we do here.
+                        print("Error: llm did not return the JSON")
+                        #for now, we will move to the next stage
+                        await self.update_stage(6, chat_ctx)
                     else:
-                        #send this draft_routine to frontend
-                        suggestion_list_json = self._parse_json(suggestion_list)
                         await self._session._room_io._room.local_participant.send_text (
                             text=json.dumps(suggestion_list_json),
                             topic="suggestion_list"
                         )
-                        if(self.suggest_changes_turn == 0):
-                            self._session.say(PROMPTS["stage4_turn0"])
-                        elif(self.preview_turn == 1):
-                            self._session.say(PROMPTS["stage4_turn1"])
-                        else:
-                            self.session.say(PROMPTS["stage4_turn2"])
-                    self.suggest_changes_turn += 1
+                        self._session.say(PROMPTS["stage4_turn0"])
+                    self.stage4_turn += 1 
                     raise StopResponse()
-                elif(self.stage == 5):
+                elif(self.stage == 5): #no longer used
                     print("llm_node stage5")
                     routine_preview = ""
                     start_time = time.time()
@@ -188,13 +193,13 @@ class AssistantAgent(Agent):
                             text=json.dumps(routine_preview_json),
                             topic="routine_preview"
                         )
-                        if(self.preview_turn == 0):
+                        if(self.stage5_turn == 0):
                             self._session.say(PROMPTS["stage5_turn0"])
-                        elif(self.preview_turn == 1):
+                        elif(self.stage5_turn == 1):
                             self._session.say(PROMPTS["stage5_turn1"])
                         else:
                             self.session.say(PROMPTS["stage5_turn2"])
-                    self.preview_turn += 1
+                    self.stage5_turn += 1
                     raise StopResponse()
                 elif(self.stage == 6):
                     print("llm_node stage6")
@@ -204,25 +209,21 @@ class AssistantAgent(Agent):
                         if chunk.delta and chunk.delta.content:
                             weekly_routine += chunk.delta.content
                     print(f"Stage 6 Stream processing took {time.time() - start_time:.2f} seconds")
-                    if(weekly_routine.upper() == "SATISFIED"):
-                        print("llm_node stage6 satisfied")
-                        await self.set_stage(7)
-                        #done
-                        #we can terminate the room
+                    weekly_routine_json = self._parse_json(weekly_routine)
+                    if (weekly_routine_json is None):
+                        #ToDo: Think what can we do here.
+                        print("Error: llm did not return the JSON")
+                        #for now, we will move to the next stage
+                        await self.update_stage(6, chat_ctx)
                     else:
-                        #send to front_end
-                        weekly_routine_json = self._parse_json(weekly_routine)
                         await self._session._room_io._room.local_participant.send_text (
                             text=json.dumps(weekly_routine_json),
                             topic="weekly_routine"
                         )
-                        if(self.final_routine_turn == 0):
-                            self._session.say(PROMPTS["stage6_turn0"])
-                        elif(self.final_routine_turn == 1):
-                            self._session.say(PROMPTS["stage6_turn1"])
-                        else:
-                            self.session.say(PROMPTS["stage6_turn2"])
-                    self.final_routine_turn += 1
+                        self._session.say(PROMPTS["stage6_turn0"])
+                        #ToDo: in frontend there will be user button to ask if they liked the routine.
+                        #based on that button we will: 1. regenerate json based on user's new requirement or move to stage 7
+                    self.stage6_turn += 1
                     raise StopResponse()
                 else:
                     async for chunk in stream:
@@ -235,6 +236,19 @@ class AssistantAgent(Agent):
         self.stage = stage_num
         metadata = {"stage": str(stage_num)}
         await self._session._room_io._room.local_participant.set_attributes(metadata)
+    
+    async def add_system_message(self, chat_ctx: llm.ChatContext, message:str):
+        chat_ctx.add_message(role="system", content=message)
+        await self._session._agent.update_chat_ctx(chat_ctx=chat_ctx)
+    
+    async def update_stage(self, stage_num:int, chat_ctx: llm.ChatContext):
+        print("Moving to stage ", stage_num)
+        await self.set_stage(stage_num)
+        prompt_key = "stage" + str(stage_num)
+        new_prompt = PROMPTS[prompt_key]
+        chat_ctx.add_message(role="system", content=new_prompt)
+        await self._session._agent.update_chat_ctx(chat_ctx)
+        self._session.generate_reply()
 
 
 
