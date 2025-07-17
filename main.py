@@ -8,11 +8,9 @@ from livekit.plugins import (
     noise_cancellation,
     silero,
 )
-from agent import AssistantAgent
+from onboarding_agent import OnboardingAgent
 from dotenv import load_dotenv
 from prompts import PROMPTS
-import httpx
-
 
 load_dotenv('.env', override=True)
 
@@ -29,8 +27,7 @@ async def entrypoint(ctx: agents.JobContext):
 
     session = AgentSession(
         stt=openai.stt.STT(model="gpt-4o-transcribe"),
-        llm=openai.llm.LLM(model="o4-mini",
-                           timeout=httpx.Timeout(200.0)),
+        llm=openai.llm.LLM(model="o4-mini"),
         tts=openai.tts.TTS(
             model="gpt-4o-mini-tts",
             voice="alloy",
@@ -43,7 +40,7 @@ async def entrypoint(ctx: agents.JobContext):
         conn_options = session_opts
     )
 
-    agent = AssistantAgent(session)
+    agent = OnboardingAgent(session)
 
 
     await session.start(
@@ -68,6 +65,8 @@ async def entrypoint(ctx: agents.JobContext):
         if(p.identity.startswith("user")):
             agent.set_user_id(p.identity)
             await handle_participant(p)
+
+    ctx.room.on("participant_attributes_changed", agent.on_participant_attribute_changed)
 
 if __name__ == "__main__":
     agents.cli.run_app(agents.WorkerOptions(entrypoint_fnc=entrypoint))
