@@ -162,7 +162,9 @@ export default function SessionPage() {
   }, []);
   return (
     <ConnectRoom feelings={feelings}>
-      <SessionContent />
+      <div className="min-h-screen breath-bg bg-gradient-to-br from-[var(--color-bg-start)] to-[var(--color-bg-end)]">
+        <SessionContent />
+      </div>
     </ConnectRoom>
   );
 }

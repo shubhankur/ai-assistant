@@ -49,9 +49,9 @@ interface SuggestionListProps {
 }
 
 export const SuggestionList: React.FC<SuggestionListProps> = ({data}) => (
-  <div className="p-6 bg-black min-h-screen">
-    <h2 className="text-xl font-semibold text-white mb-4">Suggested Changes</h2>
-    <div className="space-y-4 text-gray-200">
+  <div className="p-6 bg-white/80 min-h-screen backdrop-blur-sm">
+    <h2 className="text-xl font-semibold mb-4">Suggested Changes</h2>
+    <div className="space-y-4 text-gray-800">
       {/* Change summary panel */}
       {data && data.changes?.summary?.length ? (
         <div className="bg-yellow-600/20 text-yellow-100 rounded-lg p-4 flex gap-3">

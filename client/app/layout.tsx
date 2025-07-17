@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import '@livekit/components-styles';
+import "@livekit/components-styles";
+import TitleBar from "@/components/TitleBar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -25,7 +26,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-black`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <TitleBar />
         {children}
       </body>
     </html>

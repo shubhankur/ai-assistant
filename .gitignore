@@ -1,6 +1,7 @@
 # Python
 __pycache__/
 lib/
+!client/lib/
 lib64/
 
 # Virtual Environment
