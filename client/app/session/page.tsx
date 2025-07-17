@@ -1,6 +1,6 @@
 'use client'
-import { useEffect, useState, useRef } from 'react';
-import { BarVisualizer, useVoiceAssistant, useTextStream, RoomAudioRenderer} from '@livekit/components-react';
+import React, { useEffect, useState } from 'react';
+import { BarVisualizer, useVoiceAssistant, useTextStream, RoomAudioRenderer, useLiveKitRoom, useRoomInfo, useRoomContext} from '@livekit/components-react';
 import ConnectRoom from '../../components/ConnectRoom';
 import TranscriptionView from '@/components/TranscriptionView'
 import WeeklyRoutinePreview, { RoutineData } from '@/components/WeeklyRoutine';
@@ -10,11 +10,14 @@ import { VolumeWarning } from '@/components/VolumeWarning';
 import { VoiceControlBar } from '@/components/VoiceControlBar';
 import { LoadingView } from '@/components/LoadingView';
 import { suggestionListLoading, weeklyRoutineLoading } from '@/components/MessageList';
+import { Button } from '@/components/ui/button';
 
 function SessionContent() {
   const {state, agentAttributes, audioTrack} = useVoiceAssistant();
   console.log("state: ", state)
-  const stage = Number(agentAttributes?.stage ?? 5);
+  const roomCtx = useRoomContext();
+  console.log("room local participant: ", roomCtx.localParticipant.identity)
+  const stage = Number(agentAttributes?.stage ?? 1);
 
   const { textStreams: suggestedChangesStreams } = useTextStream("suggestion_list");
   const { textStreams: routineSummaryStream } = useTextStream("routine_preview");
@@ -73,14 +76,36 @@ function SessionContent() {
   }, [weekStreams]);
 
   console.log("stage", stage)
+
+  const updateStage = (stageNum : Number) => {
+      roomCtx.localParticipant.setAttributes({
+        "stage":String(stageNum)
+      })
+      console.log("sending stage", roomCtx.localParticipant.attributes.stage)
+  }
   return (
     <div className="relative flex flex-col w-full h-full items-center">
       {/* ToDo; Get device volume when media is being played and use that*/}
       <VolumeWarning volume={1} />
 
       {/* ToDo: Add a skip or continue later button */}
-
+      <Button className='bg-white text-black'
+        onClick={() => updateStage(7)}
+      >
+        Skip
+      </Button>
       <AgentVisualizer />
+
+      {stage == 2 && 
+        (
+          <div>
+            <Button className='bg-white text-black'
+              onClick={() => updateStage(3)}>
+                Let's Go
+            </Button>
+          </div>
+        )
+      }
       
       {stage < 5 &&
         (
