@@ -14,7 +14,7 @@ export default function Home() {
     );
   };
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen gap-8 bg-gradient-to-br from-indigo-50 to-emerald-50 p-6">
+    <div className="flex flex-col items-center justify-center min-h-screen gap-8 bg-gradient-to-br from-[var(--color-bg-start)] to-[var(--color-bg-end)] p-6">
       <Hello />
       <TypeAnimation
         sequence={["How are you feeling today?"]}
@@ -27,7 +27,7 @@ export default function Home() {
           <button
             key={o}
             onClick={() => toggle(o)}
-            className={`px-4 py-2 rounded-full transition-colors border backdrop-blur-md ${selected.includes(o) ? 'bg-indigo-500 text-white' : 'bg-white/60 text-gray-800'}`}
+            className={`px-4 py-2 rounded-full transition-colors border backdrop-blur-md ${selected.includes(o) ? 'bg-[var(--color-primary)] text-white' : 'bg-white/60 text-gray-800'}`}
           >
             {o}
           </button>
@@ -38,7 +38,7 @@ export default function Home() {
           pathname: "/session",
           query: { feelings: selected.join(",") },
         }}
-        className="mt-4 px-6 py-2 rounded bg-purple-600 text-white"
+        className="mt-4 px-6 py-2 rounded bg-[var(--color-secondary)] text-white"
       >
         Continue
       </Link>

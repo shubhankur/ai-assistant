@@ -18,3 +18,25 @@
   height: min-content;
   margin-right: 1rem;
 }
+
+:root {
+  --color-bg-start: #e0f2f1;
+  --color-bg-end: #f0f9ff;
+  --color-primary: #0d9488;
+  --color-secondary: #0ea5e9;
+  --color-text: #1e293b;
+}
+
+body {
+  background-image: linear-gradient(to bottom right, var(--color-bg-start), var(--color-bg-end));
+  color: var(--color-text);
+}
+
+@keyframes breath {
+  0%, 100% { opacity: 0.85; }
+  50% { opacity: 1; }
+}
+
+.breath-bg {
+  animation: breath 8s ease-in-out infinite;
+}
