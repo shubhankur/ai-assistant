@@ -8,11 +8,13 @@ import { RoutineSummary } from '@/components/RoutineSummary';
 import { SuggestionList } from '@/components/SuggestionList';
 import { VolumeWarning } from '@/components/VolumeWarning';
 import { VoiceControlBar } from '@/components/VoiceControlBar';
+import { LoadingView } from '@/components/LoadingView';
+import { suggestionListLoading, weeklyRoutineLoading } from '@/components/MessageList';
 
 function SessionContent() {
   const {state, agentAttributes, audioTrack} = useVoiceAssistant();
   console.log("state: ", state)
-  const stage = Number(agentAttributes?.stage ?? 1);
+  const stage = Number(agentAttributes?.stage ?? 5);
 
   const { textStreams: suggestedChangesStreams } = useTextStream("suggestion_list");
   const { textStreams: routineSummaryStream } = useTextStream("routine_preview");
@@ -61,7 +63,6 @@ function SessionContent() {
     const latest = weekStreams[weekStreams.length - 1].text;
     console.log("weekStreams", latest)
     if (!latest) return;
-
     try {
       const parsed = JSON.parse(latest);
       console.log("weekStreams_parsed", parsed)
@@ -80,29 +81,27 @@ function SessionContent() {
       {/* ToDo: Add a skip or continue later button */}
 
       <AgentVisualizer />
-      {stage < 4 &&
+      
+      {stage < 5 &&
         (
           <div className="flex-1 w-full">
             <TranscriptionView />
           </div>
         )}
 
-      {stage == 4 && suggestedChanges &&
-        <SuggestionList data={suggestedChanges} />
-      }
+      {stage == 5 && (
+        suggestedChanges ? (<SuggestionList data={suggestedChanges} />) :
+        (<>
+          <LoadingView messages={suggestionListLoading} />
+        </>)
+      )}
 
-      {stage == 5 && routineSummary &&
-        <RoutineSummary data={routineSummary} />
-      }
-
-      {stage == 6 && weekData &&
-        /* ToDo; Button: is this routine okay or very wrong */
-        <WeeklyRoutinePreview data={weekData} />
-      }
-
-      <RoomAudioRenderer />
-      {/* <NoAgentNotification state={state} /> */}
-      <VoiceControlBar controls={{ leave: false }} />
+      {stage == 6 && (
+        weekData ? (<WeeklyRoutinePreview data={weekData} />) :
+        (<>
+          <LoadingView messages={weeklyRoutineLoading} />
+        </>)
+      )}
 
     </div>
   )
@@ -111,15 +110,20 @@ function SessionContent() {
 function AgentVisualizer() {
   const { state: agentState, audioTrack } = useVoiceAssistant();
   return (
-    <div className="h-[300px] w-full">
-      <BarVisualizer
-        state={agentState}
-        barCount={5}
-        trackRef={audioTrack}
-        className="agent-visualizer"
-        options={{ minHeight: 24 }}
-      />
-    </div>
+    <>
+      <div className="h-[300px] w-full">
+        <BarVisualizer
+          state={agentState}
+          barCount={5}
+          trackRef={audioTrack}
+          className="agent-visualizer"
+          options={{ minHeight: 24 }}
+        />
+      </div>
+      <RoomAudioRenderer/>
+      <VoiceControlBar/>
+    </>
+
   );
 }
 
