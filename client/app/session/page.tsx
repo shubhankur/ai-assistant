@@ -1,15 +1,13 @@
 'use client'
 import { useEffect, useState, useRef } from 'react';
-import { BarVisualizer, DisconnectButton, VoiceAssistantControlBar, useVoiceAssistant, useTextStream, useTrackToggle, RoomAudioRenderer, useLocalParticipant, useTrackVolume } from '@livekit/components-react';
-import { NoAgentNotification } from "@/components/NoAgentNotification";
+import { BarVisualizer, useVoiceAssistant, useTextStream, RoomAudioRenderer} from '@livekit/components-react';
 import ConnectRoom from '../../components/ConnectRoom';
 import TranscriptionView from '@/components/TranscriptionView'
 import WeeklyRoutinePreview, { RoutineData } from '@/components/WeeklyRoutine';
-import { AnimatePresence, motion } from "framer-motion";
-// import { AnchorsDashboard, Anchor } from '@/components/AnchorsDashboard';
 import { RoutineSummary } from '@/components/RoutineSummary';
 import { SuggestionList } from '@/components/SuggestionList';
 import { VolumeWarning } from '@/components/VolumeWarning';
+import { VoiceControlBar } from '@/components/VoiceControlBar';
 
 function SessionContent() {
   const {state, agentAttributes, audioTrack} = useVoiceAssistant();
@@ -76,65 +74,42 @@ function SessionContent() {
   console.log("stage", stage)
   return (
     <div className="relative flex flex-col w-full h-full items-center">
-      {/* ToDo; Get device volume when media is being played and use that*/}  
+      {/* ToDo; Get device volume when media is being played and use that*/}
       <VolumeWarning volume={1} />
-      <AnimatePresence mode="wait">
-        {(
-          <motion.div
-            key="connected"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3, ease: [0.09, 1.04, 0.245, 1.055] }}
-            className="flex flex-col items-center"
-          >
-            {/* ToDo: Add a skip or continue later button */}
 
-            <AgentVisualizer />
-            {stage < 4 && 
-            (
-              <div className="flex-1 w-full">
-                <TranscriptionView />
-              </div>
-            )}
+      {/* ToDo: Add a skip or continue later button */}
 
-            {stage == 4 && suggestedChanges &&
-              <SuggestionList data = {suggestedChanges} />
-            }   
-
-            {stage == 5 && routineSummary &&
-              <RoutineSummary data = {routineSummary} />
-            }
-
-            {stage == 6 && weekData &&
-              /* ToDo; Button: is this routine okay or very wrong */
-              <WeeklyRoutinePreview data = {weekData} />
-            }
-            
-            <RoomAudioRenderer />
-            <NoAgentNotification state={state} />
-          </motion.div>
+      <AgentVisualizer />
+      {stage < 4 &&
+        (
+          <div className="flex-1 w-full">
+            <TranscriptionView />
+          </div>
         )}
-      </AnimatePresence>
-      <AnimatePresence mode="wait">
-          <motion.div
-            initial={{ opacity: 0, top: "1px" }}
-            animate={{ opacity: 1, top: 0 }}
-            exit={{ opacity: 0, top: "-1px" }}
-            transition={{ duration: 0.4, ease: [0.09, 1.04, 0.245, 1.055] }}
-            className="flex flex-col items-center"
-          >
-            <VoiceAssistantControlBar controls={{ leave: false }} />
-          </motion.div>
-      </AnimatePresence>
+
+      {stage == 4 && suggestedChanges &&
+        <SuggestionList data={suggestedChanges} />
+      }
+
+      {stage == 5 && routineSummary &&
+        <RoutineSummary data={routineSummary} />
+      }
+
+      {stage == 6 && weekData &&
+        /* ToDo; Button: is this routine okay or very wrong */
+        <WeeklyRoutinePreview data={weekData} />
+      }
+
+      <RoomAudioRenderer />
+      {/* <NoAgentNotification state={state} /> */}
+      <VoiceControlBar controls={{ leave: false }} />
 
     </div>
   )
 }
 
 function AgentVisualizer() {
-  const { state: agentState, videoTrack, audioTrack } = useVoiceAssistant();
-
+  const { state: agentState, audioTrack } = useVoiceAssistant();
   return (
     <div className="h-[300px] w-full">
       <BarVisualizer
