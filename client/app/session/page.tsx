@@ -115,18 +115,23 @@ function SessionContent() {
         )}
 
       {stage == 5 && (
+        //ToDo: go to day page
+        <div></div>
+      )}
+
+      {/* {stage == 5 && (
         suggestedChanges ? (<SuggestionList data={suggestedChanges} />) :
         (<>
           <LoadingView messages={suggestionListLoading} />
         </>)
-      )}
+      )} */}
 
-      {stage == 6 && (
+      {/* {stage == 6 && (
         weekData ? (<WeeklyRoutinePreview data={weekData} />) :
         (<>
           <LoadingView messages={weeklyRoutineLoading} />
         </>)
-      )}
+      )} */}
 
     </div>
   )
@@ -153,15 +158,26 @@ function AgentVisualizer() {
 }
 
 export default function SessionPage() {
-  const [feelings, setFeelings] = useState('');
+  const [feelings, setFeelings] = useState<JSON>();
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
-      setFeelings(params.get('feelings') || '');
+      const date = new Date()
+      const day = date.getDay()
+      const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+      const feelingJson = `{"stage" : 1,"feelings":${params.get('feelings')},"day":${days[day]}}`
+      setFeelings(JSON.parse(feelingJson));
     }
   }, []);
+  if(!feelings){
+    return (
+      <div>
+        connecting...
+      </div>
+    )
+  }
   return (
-    <ConnectRoom feelings={feelings}>
+    <ConnectRoom metadata={feelings}>
       <SessionContent />
     </ConnectRoom>
   );

@@ -1,4 +1,4 @@
-PROMPTS = {
+ONBOARDING_PROMPTS = {
     "tts_instructions": (
         "Speak like a human conversation with calm and soothing tone."
     ),
@@ -18,18 +18,18 @@ PROMPTS = {
     #stage3 prompt - Collect Current Routine
     "stage3":(
         '''
-You are an AI schedule helper. Your goal is to collect the user’s current weekly routine in as few, clear questions as possible.
+You are an AI schedule helper. Your goal is to collect the user's current weekly routine in as few, clear questions as possible.
 Conversation rules
 - No small talk.
 - One concise, topic-focused question per turn.
 - No long echoes or summaries; never read back everything the user said.
-- Accept approximate or flexible answers (e.g. “around 8”, “varies”, “whenever I’m hungry”) BUT ask for ranges when users are completely vague in ONE follow-up, if they are still vague let it be.
+- Accept approximate or flexible answers (e.g. "around 8", "varies", "whenever I'm hungry") 
+BUT ask for ranges when users are completely vague in ONE follow-up, if they are still vague let it be.
 - Only ask for a precise time when the event truly needs it. If user is not sure, let it be.
-- If the user already gave any timing—exact, range, or “varies”—do not re-ask for that timing.
+- If the user already gave any timing—exact, range, or “varies” — do not re-ask for that timing.
 - If user contradicts themselves, gently clarify which information is correct.
-- Do NOT ask anything about goals or desired changes yet.
+- Do NOT ask or suggest anything about changes to the routine.
 - After you have enough to map the week atleast broadly without major gaps, stop questioning and just reply "SATISFIED".
-
 
 Question sequence
 Greeting & context
@@ -46,7 +46,7 @@ Work or Main Commitment schedule clarification (if mentioned but you still have 
 "You mentioned [work/commitment name] - can you briefly tell me how does it's schedule look like?"
 
 Off-days / weekends
-“And how do your weekends or whichever days you’re off-duty usually go?”
+“And how do your weekends or whichever days you're off-duty usually go?”
 If Saturday and Sunday differ, one follow-up.
 
 Daily essentials (SKIP if user already has mentioned it in the conversation.)
@@ -129,6 +129,38 @@ Capture user's aspirations and desired changes in the JSON schema below:
         '''
     ),
 
+    #get today plan
+    "today_plan":(
+      '''
+        Now that we know user's current routine and the changes that they want. Create today's plan for the user given that today is Monday. 
+Return a JSONObject.
+"blocks": [
+        {
+          "start": "HH:MM",
+          "end":   "HH:MM",
+          "name":  "",
+          "category": "work | workout | sleep | relax | routine | goals | hobby | other",
+          "location": "",      // optional
+          "details":  ""       // optional
+        }
+      ]
+    where each block is an activity.
+    Scheduling Rules:
+    1. Break between continuous blocks:
+      If the user is working continuously for a long period of time, insert a break that matches an aspiration or suggestion (e.g., meditation or small walk after 2 hours of continuous work). Choose an appropriate length (10-60 min). 
+      OR, Instead of a break arrange essentials like meals, workouts between Continuous blocks. 
+      Prioritize if this information is available in the context already.
+      Split the original block so the break sits in the middle, keeping everything in chronological order.
+    2. Granularity.
+      • Realistic default durations: meals ≈ 30 min, walks ≈ 15-30 mins, workouts ≥ 60 mins.  
+      • Interpret vague words: morning 09:00, midday 12:00, afternoon 14:00, evening 19:00, night 21:00 (adjust if conflict).
+      • Switching between 2 activities also has a small transition time, DO NOT mention that but include it in your planning algorithm
+    3. Gap handling  
+      • Use unscheduled windows to host remaining aspirations or suggestions.  
+      • Otherwise leave them open and label as "Open" (category = other).
+          '''  
+    ),
+
 
     #stage5 prompt - Suggestions
 "stage5" :(
@@ -144,8 +176,8 @@ Rules
    c. activities_to_add
    d. activities_to_remove
    • For each item:
-       – If the user already gave a concrete action, suggest ONE practical tactic to support it.
-       – If the item is vague, convert it into ONE concrete, actionable suggestion.
+       - If the user already gave a concrete action, suggest ONE practical tactic to support it.
+       - If the item is vague, convert it into ONE concrete, actionable suggestion.
 2. OPTIONAL PROFESSIONAL ADD-ONS
    • After all aspiration items are addressed, you may add up to THREE extra suggestions
      for better work practices and mental or physical health that the user did not mention.
@@ -171,34 +203,15 @@ Example structure (placeholders only):
     { "suggestion": "", "reason": "", "targets": "" }
   ]
 }
-User will either be okay with this list or suggest some changes, if they are okay, DO NOT return a JSON, just return "SATISFIED". Othewise, if user suggested any changes, return new JSON accomodating user's request, this time, with an added block called changes that summarizes what changes did you make based on user's request.
-"changes": {
- [
-            "what changes did you make in words",
-            "another change",
-            ......
-        ],
-
     '''
 ),
-
-   "stage5_turn0" : ('''
-   Great! I think I have captured all the required information now. Here are a few changes that I feel should be a part of your routine based on our discussion.
-   Does this look good to you? Or do you want some changes.
-   '''),
-
-   "stage5_turn1": (
-     ''' How about now ! Keep in mind that we are just drafting a base line right now and we will deal more with specifics on day to day basis while generating your
-     daily routine. So if this is borderline okay. We can proceed for now.
-     '''
-   ),
 
     #stage6 prompt - Final Weekly Routine
     "stage6" : (
 '''
-• schedule     – current Monday-to-Sunday timetable.
-• aspirations  – goals, lifestyle_changes, activities_to_add, activities_to_remove.
-• suggestions  – expert recommendations the user accepted.
+• schedule     - current Monday-to-Sunday timetable.
+• aspirations  - goals, lifestyle_changes, activities_to_add, activities_to_remove.
+• suggestions  - expert recommendations the user accepted.
 
 Role  
 Combine those inputs into one coherent, health-supportive weekly plan, following the rules below:
@@ -266,8 +279,5 @@ what changes did you make based on user's request.
             ......
         ],
 '''
-    ),
-    "stage6_turn0": "Here is your final weekly routine? Take a look and let me know if you need any changes.",
-    "stage6_turn1":'''Is this okay? Also, please keep in mind that we are creating your weekly routine just so that we have a context of your day to day.
-    My main goal is to create your daily plan and we will be much more granular and specific then.'''
+    )
 }
