@@ -25,6 +25,7 @@ Conversation rules
 - No long echoes or summaries; never read back everything the user said.
 - Accept approximate or flexible answers (e.g. "around 8", "varies", "whenever I'm hungry") 
 BUT ask for ranges when users are completely vague in ONE follow-up, if they are still vague let it be.
+- If you did not recieve a response for a question. Do not repeat the same or similar question. Either mark that time block as open or use your own intelligence to approximate it based on the conversation. If very necessary, clarify only ONCE.
 - Only ask for a precise time when the event truly needs it. If user is not sure, let it be.
 - If the user already gave any timing—exact, range, or “varies” — do not re-ask for that timing.
 - If user contradicts themselves, gently clarify which information is correct.
@@ -162,8 +163,8 @@ Return a JSONObject.
     ),
 
 
-    #stage5 prompt - Suggestions
-"stage5" :(
+    #habit reformation prompt - Suggestions
+"habit_reformation_prompt" :(
     '''
     Based on Conversation with the user about their Current Routine and their aspirations and desired routine changes:
 Act as a Licensed Occupational Therapist / Lifestyle Medicine Physician
@@ -207,7 +208,7 @@ Example structure (placeholders only):
 ),
 
     #stage6 prompt - Final Weekly Routine
-    "stage6" : (
+    "weekly_plan" : (
 '''
 • schedule     - current Monday-to-Sunday timetable.
 • aspirations  - goals, lifestyle_changes, activities_to_add, activities_to_remove.
@@ -268,16 +269,6 @@ Output schema  (return JSON only)
 }
 
 Return JSON only** exactly matching the schema—no commentary.
-
-User will either be okay with this list or suggest some changes, if they are okay, DO NOT return a JSON, just return "SATISFIED".
-Otherwise, if user suggested any changes, return new JSON with exactly ONLY the change that user just said this time, with an added block called changes that summarizes
-what changes did you make based on user's request.
-"changes": {
- [
-            "what changes did you make in words",
-            "another change",
-            ......
-        ],
 '''
     )
 }

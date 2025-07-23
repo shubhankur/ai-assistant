@@ -158,18 +158,18 @@ function AgentVisualizer() {
 }
 
 export default function SessionPage() {
-  const [feelings, setFeelings] = useState<JSON>();
+  const [metadata, setMetadata] = useState<JSON>();
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const date = new Date()
       const day = date.getDay()
       const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
-      const feelingJson = `{"stage" : 1,"feelings":${params.get('feelings')},"day":${days[day]}}`
-      setFeelings(JSON.parse(feelingJson));
+      const feelingJson = `{"stage" : 1,"feelings":"${params.get('feelings')}","day":"${days[day]}"}`
+      setMetadata(JSON.parse(feelingJson));
     }
   }, []);
-  if(!feelings){
+  if(!metadata){
     return (
       <div>
         connecting...
@@ -177,7 +177,7 @@ export default function SessionPage() {
     )
   }
   return (
-    <ConnectRoom metadata={feelings}>
+    <ConnectRoom metadata={metadata}>
       <SessionContent />
     </ConnectRoom>
   );

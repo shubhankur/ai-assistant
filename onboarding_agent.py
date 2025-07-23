@@ -3,6 +3,7 @@ import re
 import time
 import asyncio
 from livekit.agents import llm, Agent, AgentSession, ModelSettings
+from livekit.rtc import Room
 # from livekit.agents.voice import Agent, AgentSession, ModelSettings
 from livekit.agents.llm import ChatContext, FunctionTool, RawFunctionTool
 from livekit.agents.llm.tool_context import StopResponse
@@ -16,36 +17,32 @@ class OnboardingAgent(Agent):
     def __init__(self, session: AgentSession):
         super().__init__(instructions="")
         self._session = session
-        self._room = session._room_io._room
+        self._room = None
         self.stage = 1
-        self.user_id = None
         self.user_feeling = None
         self.stage3_task = None
         self.stage3_response = None
-        self.stage4_task = None
-        self.stage4_response = None
-        self.habit_reformation_task = None
-        self.habit_reformation_list = None
-        self.weekly_routine_task = None
-        self.weekly_routine = None
         self.stage2_turn = 0
         self.today = ""
-        self.today_task = None
-        self.today_plan = None
 
     
     async def on_participant_attribute_changed(self, attributes : dict, participant : Participant) -> None:
-        received_stage = attributes.get("stage")
-        if(received_stage):
-            stage = int(received_stage)
-            if(stage == 3):
-                await self.update_stage(3, ChatContext.empty())
-                raise StopResponse()
-            elif(stage == 7):
-                #ToDo: If the user has skipped. Maybe store the obtained information till now
-                await self.update_stage(7, ChatContext.empty())
-                raise StopResponse()
-
+        if(participant.identity.startswith("user")):
+            received_stage = attributes.get("stage")
+            if(received_stage):
+                stage = int(received_stage)
+                print("received stage", stage)
+                if(stage == 3):
+                    await self.update_stage(3, ChatContext.empty())
+                    raise StopResponse()
+                elif(stage == 7):
+                    #ToDo: If the user has skipped. Maybe store the obtained information till now
+                    await self.update_stage(7, ChatContext.empty())
+                    try:
+                        raise StopResponse()
+                    except:
+                        print("Stopped Response")
+                        pass
     async def start(self, feeling: str, day: str) -> None:
         self.user_feeling = feeling
         self.today = day
@@ -82,9 +79,9 @@ class OnboardingAgent(Agent):
         self, turn_ctx: llm.ChatContext, new_message: llm.ChatMessage
     ) -> None:
         if self.stage == 2:
-            system_prompt = ONBOARDING_PROMPTS["stage2_is_user_continue"]
-            await self.add_system_message(turn_ctx, system_prompt)
-            self.stage2_turn += 1
+            if(self.stage2_turn == 1):
+                system_prompt = ONBOARDING_PROMPTS["stage2_is_user_continue"]
+                await self.add_system_message(turn_ctx, system_prompt)
         elif self.stage == 3:
             pass
         elif self.stage == 4:
@@ -118,20 +115,26 @@ class OnboardingAgent(Agent):
                     if(self.stage2_turn == 0):
                         async for chunk in stream:
                             yield chunk
+                        self.stage2_turn += 1
                     else:
                         response = ""
                         async for chunk in stream:
                             if chunk.delta and chunk.delta.content:
                                 response += chunk.delta.content
-                        print("llm node stage 2 response")
+                        print("llm node stage 2 response ", response)
                         if(response == "NO"):
                             await self.set_stage(-1)
                             system_message = ONBOARDING_PROMPTS["farewell"]
                             await self.add_system_message(chat_ctx, system_message)
                             self._session.generate_reply()
                         else:
+                            print("stage 2 satisfied")
                             await self.update_stage(3, ChatContext.empty())
-                            raise StopResponse()
+                            try:
+                                raise StopResponse()
+                            except:
+                                print("Stopped Response")
+                                pass
                 elif(self.stage == 3):
                     print("llm_node stage3")
                     response = ""
@@ -139,10 +142,13 @@ class OnboardingAgent(Agent):
                     iter = 0
                     validation_signal = "SATISFIED"
                     async for chunk in stream:
-                        if chunk.delta and chunk.delta.content and iter < len(validation_signal):
+                        if response is None:
+                            yield chunk
+                        elif chunk.delta and chunk.delta.content and iter < len(validation_signal):
                             response += chunk.delta.content
                             iter += 1
                         elif(response.upper() == validation_signal):
+                            print("stage 3 satisfied")
                             #store output
                             prompt = ONBOARDING_PROMPTS["stage3_output"]
                             self.stage3_task = asyncio.create_task(
@@ -151,7 +157,11 @@ class OnboardingAgent(Agent):
                             self.stage3_task.add_done_callback(self._store_stage3_output)
                             #update to stage4
                             await self.update_stage(4, chat_ctx)
-                            raise StopResponse()
+                            try:
+                                raise StopResponse()
+                            except:
+                                print("Stopped Response")
+                                pass
                         #ToDo: Some Validation that model did not mess up for example, very long response.
                         else:
                             if(response):
@@ -159,8 +169,6 @@ class OnboardingAgent(Agent):
                                 response += chunk.delta.content
                                 yield response
                                 response = None #ToDo; Validate if it works
-                            else:
-                                yield chunk
                 elif(self.stage == 4):
                     print("llm_node stage4")
                     response = ""
@@ -168,27 +176,67 @@ class OnboardingAgent(Agent):
                     iter = 0
                     validation_signal = "SATISFIED"
                     async for chunk in stream:
-                        if chunk.delta and chunk.delta.content and iter < len(validation_signal):
+                        if response is None:
+                            yield chunk
+                        elif chunk.delta and chunk.delta.content and iter < len(validation_signal):
                             response += chunk.delta.content
                             iter += 1
                         elif(response.upper() == validation_signal):
-                            await self.set_stage(5)
-                            #1. Async Generate plan for today, Save to Mongo               
+                            print("stage 4 satisfied")
+                            #1. Generate plan for today, Send to Client And Save to Mongo               
                             today_plan_prompt = ONBOARDING_PROMPTS["today_plan"]
-                            self.today_task = asyncio.create_task(
-                                self._llm_complete(today_plan_prompt, chat_ctx)
-                            )
-                            self.today_task.add_done_callback(self._store_today_plan)
-                            
+                            today_plan_res = await self._llm_complete(today_plan_prompt, chat_ctx)
+                            print("Today Plan Res ", today_plan_res)
+                            today_plan_json = self._parse_json(today_plan_res)
+                            if(today_plan_json is None):
+                                #ToDo: Maybe ask to regenerate
+                                print("Error: today_plan_response was not a valid json")
+                            else:
+                                await self._room.local_participant.send_text(
+                                    topic="today_plan", 
+                                    text=json.dumps(today_plan_json)
+                                )
+                            await self.set_stage(5)
+
                             #2. Async store stage4_output
                             stage4_output_prompt = ONBOARDING_PROMPTS["stage4_output"]
-                            self.stage4_task = asyncio.create_task(
-                                self._llm_complete(stage4_output_prompt, chat_ctx)
-                            )
-                            self.stage4_task.add_done_callback(self._store_stage4_output)
+                            habit_changes = await self._llm_complete(stage4_output_prompt, chat_ctx)
+                            habit_changes_json = self._parse_json(habit_changes)
+                            if(habit_changes_json is None):
+                                #ToDo: Maybe ask to regenerate
+                                print("Error: Habit changes response is not a valid json")
+                            else:
+                                #mongo store
+                                pass
+
                             #3. Async Generate Ongoing Reformation list, Save to Mongo
+                            habit_reformation_prompt = ONBOARDING_PROMPTS["habit_reformation_prompt"]
+                            habit_reformation_res = await self._llm_complete(habit_reformation_prompt, chat_ctx)
+                            habit_reformation_json = self._parse_json(habit_reformation_res)
+                            if(habit_reformation_json is None):
+                                #ToDo: Maybe ask to regenerate
+                                print("Error: Habit Reformation response is not a valid json")
+                            else:
+                                #mongo store
+                                pass
+
                             #4. Async Generate Weekly Plan, Save to Mongo
-                            pass
+                            weekly_plan_prompt = ONBOARDING_PROMPTS["weekly_plan"]
+                            weekly_plan_res = await self._llm_complete(weekly_plan_prompt, chat_ctx)
+                            weekly_plan_json = self._parse_json(weekly_plan_res)
+                            if(weekly_plan_json is None):
+                                #ToDo: Maybe ask to regenerate
+                                print("Error: Weekly Plan Response is not a valid json")
+                            else:
+                                #mongo store
+                                pass
+
+                            await self._room.disconnect()
+                            try:
+                                raise StopResponse()
+                            except:
+                                print("Stopped Response")
+                                pass
                         #ToDo: Some Validation that model did not mess up for example, very long response.
                         else:
                             if(response):
@@ -196,60 +244,9 @@ class OnboardingAgent(Agent):
                                 response += chunk.delta.content
                                 yield response
                                 response = None #ToDo; Validate if it works
-                            else:
-                                yield chunk       
-                # elif(self.stage == 5):
-                #     print("llm_node stage5")
-                #     suggestion_list = ""
-                #     start_time = time.time()
-                #     async for chunk in stream:
-                #         if chunk.delta and chunk.delta.content:
-                #             suggestion_list += chunk.delta.content
-                #     print(f"Stage 5 Stream processing took {time.time() - start_time:.2f} seconds")
-                #     suggestion_list_json = self._parse_json(suggestion_list)
-                #     if(suggestion_list_json is None):
-                #         #ToDo: Think what can we do here.
-                #         print("Error: llm did not return the JSON")
-                #         #for now, we will move to the next stage
-                #         await self.update_stage(6, chat_ctx)
-                #     else:
-                #         await self._session._room_io._room.local_participant.send_text (
-                #             text=json.dumps(suggestion_list_json),
-                #             topic="suggestion_list"
-                #         )
-                #         self._session.say(PROMPTS["stage5_turn"+ str(self.stage5_turn)])
-                #     self.stage5_turn += 1 
-                #     raise StopResponse()
-                # elif(self.stage == 6):
-                    print("llm_node stage6")
-                    weekly_routine = ""
-                    start_time = time.time()
-                    async for chunk in stream:
-                        if chunk.delta and chunk.delta.content:
-                            weekly_routine += chunk.delta.content
-                    print(f"Stage 6 Stream processing took {time.time() - start_time:.2f} seconds")
-                    weekly_routine_json = self._parse_json(weekly_routine)
-                    if (weekly_routine_json is None):
-                        #ToDo: Think what can we do here.
-                        print("Error: llm did not return the JSON")
-                        #for now, we will move to the next stage
-                        await self.update_stage(6, chat_ctx)
-                    else:
-                        await self._session._room_io._room.local_participant.send_text (
-                            text=json.dumps(weekly_routine_json),
-                            topic="weekly_routine"
-                        )
-                        self._session.say(ONBOARDING_PROMPTS["stage5_turn"+ str(self.stage5_turn)])
-                        #ToDo: in frontend there will be user button to ask if they liked the routine.
-                        #based on that button we will: 1. regenerate json based on user's new requirement or move to stage 7
-                    self.stage6_turn += 1
-                    raise StopResponse()
                 else:
                     async for chunk in stream:
                         yield chunk
-    
-    def set_user_id(self, id:str):
-        self.user_id = id
     
     async def set_stage(self, stage_num:int):
         self.stage = stage_num
@@ -266,19 +263,12 @@ class OnboardingAgent(Agent):
         prompt_key = "stage" + str(stage_num)
         new_prompt = ONBOARDING_PROMPTS[prompt_key]
         chat_ctx.add_message(role="system", content=new_prompt)
-        setattr()
         await self._session._agent.update_chat_ctx(chat_ctx)
         self._session.generate_reply()
 
     def _store_stage3_output(self, task: asyncio.Task[str]) -> None:
         self.stage3_response = task.result()
+        #ToDo: Also store to Mongo
     
-    def _store_stage4_output(self, task: asyncio.Task[str]) -> None:
-        self.stage4_response = task.result()
-
-    def _store_today_plan(self, task: asyncio.Task[str]) -> None:
-        self.today_plan = task.result()
-
-
-
-                    
+    def set_room(self, room : Room):
+        self._room = room
