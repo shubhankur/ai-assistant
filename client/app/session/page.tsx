@@ -87,25 +87,24 @@ function SessionContent() {
     <div className="relative flex flex-col w-full h-full items-center">
       {/* ToDo; Get device volume when media is being played and use that*/}
       <VolumeWarning volume={1} />
-
-      {/* ToDo: Add a skip or continue later button */}
-      <Button className='bg-white text-black'
-        onClick={() => updateStage(7)}
-      >
-        Skip
-      </Button>
       <AgentVisualizer />
 
       {stage == 2 && 
         (
           <div>
-            <Button className='bg-white text-black'
+            <Button className='bg-white text-black mb-2'
               onClick={() => updateStage(3)}>
-                Let's Go
+                I have 5 uninterrupted minutes
             </Button>
           </div>
         )
       }
+
+      <Button className='bg-white text-black'
+        onClick={() => updateStage(7)}
+      >
+        Skip
+      </Button>
       
       {stage < 5 &&
         (

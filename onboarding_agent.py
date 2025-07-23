@@ -4,7 +4,7 @@ import time
 import asyncio
 from livekit.agents import llm, Agent, AgentSession, ModelSettings
 from livekit.rtc import Room
-# from livekit.agents.voice import Agent, AgentSession, ModelSettings
+from livekit.agents.voice import SpeechHandle
 from livekit.agents.llm import ChatContext, FunctionTool, RawFunctionTool
 from livekit.agents.llm.tool_context import StopResponse
 from livekit.rtc.participant import RemoteParticipant, Participant
@@ -34,7 +34,7 @@ class OnboardingAgent(Agent):
                 print("received stage", stage)
                 if(stage == 3):
                     await self.update_stage(3, ChatContext.empty())
-                    raise StopResponse()
+                    self.session.interrupt()
                 elif(stage == 7):
                     #ToDo: If the user has skipped. Maybe store the obtained information till now
                     await self.update_stage(7, ChatContext.empty())
@@ -48,7 +48,7 @@ class OnboardingAgent(Agent):
         self.today = day
         await self.set_stage(2)
         new_prompt = ONBOARDING_PROMPTS["stage2"].format(user_feeling=feeling)
-        self._session.generate_reply(instructions=new_prompt, allow_interruptions=False)
+        self.greeting_speech = self._session.generate_reply(instructions=new_prompt, allow_interruptions=True)
         #user responds if they want to continue
 
     async def _llm_complete(self, system_prompt: str, chat_ctx: llm.ChatContext) -> str:
