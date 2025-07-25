@@ -133,7 +133,7 @@ Capture user's aspirations and desired changes in the JSON schema below:
     #get today plan
     "today_plan":(
       '''
-        Now that we know user's current routine and the changes that they want. Create today's plan for the user given that today is Monday. 
+        Now that we know user's current routine and the changes that they want. Create today's plan for the user given that today is {day}. 
 Return a JSONObject.
 "blocks": [
         {

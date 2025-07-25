@@ -68,9 +68,9 @@ async def entrypoint(ctx: agents.JobContext):
                 agent.set_room(ctx.room)
                 ctx.room.on("participant_attributes_changed", participant_attributes_changed_sync)
                 feeling = metadataJson['feelings']
-                today = metadataJson['day']
+                date = metadataJson['date']
                 if feeling:
-                    await agent.start(feeling, today)
+                    await agent.start(feeling, date)
                 else:
                     raise Exception("Must send feeling when starting at stage 1")
             elif(stage == 6):

@@ -10,8 +10,22 @@ from livekit.agents.llm.tool_context import StopResponse
 from livekit.rtc.participant import RemoteParticipant, Participant
 from collections.abc import AsyncGenerator
 from livekit.agents.types import NOT_GIVEN
+from datetime import datetime
 
 from onboarding_prompts import ONBOARDING_PROMPTS
+
+def parse_js_date_string(date_str):
+    # Example: "Fri Jul 25 2025 00:57:54 GMT-0400 (Eastern Daylight Time)"
+    match = re.match(
+        r"(\w{3}) (\w{3} \d{2} \d{4}) (\d{2}:\d{2}:\d{2}) (GMT[+-]\d{4})",
+        date_str
+    )
+    if match:
+        day, date, time, gmt = match.groups()
+        timezone = gmt  # Only GMT value
+        return day, date, time, timezone
+    else:
+        return None, None, None, None
 
 class OnboardingAgent(Agent):
     def __init__(self, session: AgentSession):
@@ -24,6 +38,10 @@ class OnboardingAgent(Agent):
         self.stage3_response = None
         self.stage2_turn = 0
         self.today = ""
+        self.tomorrow = ""
+        self.date = ""
+        self.time = ""
+        self.timezone = ""
 
     
     async def on_participant_attribute_changed(self, attributes : dict, participant : Participant) -> None:
@@ -43,9 +61,21 @@ class OnboardingAgent(Agent):
                     except:
                         print("Stopped Response")
                         pass
-    async def start(self, feeling: str, day: str) -> None:
+    async def start(self, feeling: str, date: str) -> None:
         self.user_feeling = feeling
+        # Parse date string (Fri Jul 25 2025 00:57:54 GMT-0400 (Eastern Daylight Time)) into day, date, time and timezone
+        day, date_str, time, timezone = parse_js_date_string(date)
         self.today = day
+        self.date = date_str
+        self.time = time
+        self.timezone = timezone
+        # Calculate tomorrow's day using only the day string
+        days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+        if day in days:
+            idx = days.index(day)
+            self.tomorrow = days[(idx + 1) % 7]
+        else:
+            self.tomorrow = ""
         await self.set_stage(2)
         new_prompt = ONBOARDING_PROMPTS["stage2"].format(user_feeling=feeling)
         self.greeting_speech = self._session.generate_reply(instructions=new_prompt, allow_interruptions=True)
@@ -183,21 +213,46 @@ class OnboardingAgent(Agent):
                             iter += 1
                         elif(response.upper() == validation_signal):
                             print("stage 4 satisfied")
-                            #1. Generate plan for today, Send to Client And Save to Mongo               
-                            today_plan_prompt = ONBOARDING_PROMPTS["today_plan"]
-                            today_plan_res = await self._llm_complete(today_plan_prompt, chat_ctx)
-                            print("Today Plan Res ", today_plan_res)
-                            today_plan_json = self._parse_json(today_plan_res)
-                            if(today_plan_json is None):
-                                #ToDo: Maybe ask to regenerate
-                                print("Error: today_plan_response was not a valid json")
-                            else:
-                                await self._room.local_participant.send_text(
-                                    topic="today_plan", 
-                                    text=json.dumps(today_plan_json)
-                                )
-                            await self.set_stage(5)
+                            
+                             #1. Generate plan for today or tomorrow, Send to Client And Save to Mongo      
+                            if datetime.strptime(self.time, "%H:%M").time() < datetime.strptime("12:00", "%H:%M").time():
+                                today_plan_json = await self.get_daily_plan(self.today, chat_ctx)
+                                if(today_plan_json is None):
+                                    #ToDo: Maybe ask to regenerate
+                                    print("Error: today_plan_response was not a valid json")
+                                else:
+                                    await self._room.local_participant.send_text(
+                                        topic="today_plan", 
+                                        text=json.dumps(today_plan_json)
+                                    )
+                                    #Save to Mongo
 
+                                tomorrow_plan_json = await self.get_daily_plan(self.tomorrow, chat_ctx)
+                                if(tomorrow_plan_json is None):
+                                    #ToDo: Maybe ask to regenerate
+                                    print("Error: today_plan_response was not a valid json")
+                                else:
+                                   #Save to Mongo
+                                   pass
+                            else:
+                                tomorrow_plan_json = await self.get_daily_plan(self.tomorrow, chat_ctx)
+                                if(tomorrow_plan_json is None):
+                                    #ToDo: Maybe ask to regenerate
+                                    print("Error: today_plan_response was not a valid json")
+                                else:
+                                    await self._room.local_participant.send_text(
+                                        topic="tomorrow_plan", 
+                                        text=json.dumps(tomorrow_plan_json)
+                                    )
+                                today_plan_json = await self.get_daily_plan(self.today, chat_ctx)
+                                if(today_plan_json is None):
+                                    #ToDo: Maybe ask to regenerate
+                                    print("Error: today_plan_response was not a valid json")
+                                else:
+                                   #Save to Mongo
+                                   pass    
+                            await self.set_stage(5)
+                            
                             #2. Async store stage4_output
                             stage4_output_prompt = ONBOARDING_PROMPTS["stage4_output"]
                             habit_changes = await self._llm_complete(stage4_output_prompt, chat_ctx)
@@ -248,6 +303,13 @@ class OnboardingAgent(Agent):
                     async for chunk in stream:
                         yield chunk
     
+    async def get_daily_plan(self, input_day : str, chat_ctx : llm.ChatContext) -> json:
+        day_plan_prompt = ONBOARDING_PROMPTS["today_plan"].format(day=input_day)
+        day_plan_res = await self._llm_complete(day_plan_prompt, chat_ctx)
+        print("Today Plan Res ", day_plan_res)
+        day_plan_json = self._parse_json(day_plan_res)
+        return day_plan_json      
+
     async def set_stage(self, stage_num:int):
         self.stage = stage_num
         metadata = {"stage": str(stage_num)}
@@ -268,6 +330,7 @@ class OnboardingAgent(Agent):
 
     def _store_stage3_output(self, task: asyncio.Task[str]) -> None:
         self.stage3_response = task.result()
+        print("Stage 3 response ready ", self.stage3_response)
         #ToDo: Also store to Mongo
     
     def set_room(self, room : Room):

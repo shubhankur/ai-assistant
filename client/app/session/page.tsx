@@ -11,6 +11,7 @@ import { VoiceControlBar } from '@/components/VoiceControlBar';
 import { LoadingView } from '@/components/LoadingView';
 import { suggestionListLoading, weeklyRoutineLoading } from '@/components/MessageList';
 import { Button } from '@/components/ui/button';
+import { DayPlan } from '../day/page';
 
 function SessionContent() {
   const {state, agentAttributes, audioTrack} = useVoiceAssistant();
@@ -22,11 +23,29 @@ function SessionContent() {
   const { textStreams: suggestedChangesStreams } = useTextStream("suggestion_list");
   const { textStreams: routineSummaryStream } = useTextStream("routine_preview");
   const { textStreams: weekStreams }   = useTextStream("weekly_routine"); 
+  const {textStreams : todayPlanStream} = useTextStream("today_plan");
+  const {textStreams : tomorrowPlanStream} = useTextStream("tomorrow_plan");
 
+  const [todayPlan, setTodayPlan] = useState<DayPlan>()
+  const [tomorrowPlan, setTomorrowPlan] = useState<DayPlan>()
   const [suggestedChanges, setSuggestedChanges] = useState()
   // const [anchors, setAnchors] = useState<Anchor[]>([])
   const [routineSummary, setRoutineSummary] = useState()
   const [weekData, setWeekData] = useState<RoutineData>()
+
+  /* ------------- whenever the daily plan arrives ----------------- */
+  useEffect(() => {
+    if (todayPlanStream.length != 0) {
+      const latest = todayPlanStream[todayPlanStream.length - 1].text;
+      const parsed = JSON.parse(latest);
+      setTodayPlan(parsed);
+    }
+    else if (tomorrowPlanStream.length != 0) {
+      const latest = tomorrowPlanStream[tomorrowPlanStream.length - 1].text;
+      const parsed = JSON.parse(latest);
+      setTomorrowPlan(parsed);
+    }
+  }, [todayPlanStream, tomorrowPlanStream]);
 
   /* ------------- whenever the suggested changes arrives ----------------- */
   useEffect(() => {
@@ -83,6 +102,19 @@ function SessionContent() {
       })
       console.log("sending stage", roomCtx.localParticipant.attributes.stage)
   }
+
+  useEffect(() => {
+    if (stage === 5) {
+      if (todayPlan) {
+        const param = encodeURIComponent(JSON.stringify(todayPlan));
+        window.location.assign(`/day?plan=${param}`);
+      } else if (tomorrowPlan) {
+        const param = encodeURIComponent(JSON.stringify(tomorrowPlan));
+        window.location.assign(`/day?plan=${param}`);
+      }
+    }
+  }, [stage, todayPlan, tomorrowPlan]);
+
   return (
     <div className="relative flex flex-col w-full h-full items-center">
       {/* ToDo; Get device volume when media is being played and use that*/}
@@ -114,8 +146,9 @@ function SessionContent() {
         )}
 
       {stage == 5 && (
-        //ToDo: go to day page
-        <div></div>
+        (!todayPlan && !tomorrowPlan) ? (
+          <LoadingView messages={["Loading your schedule..."]} />
+        ) : null
       )}
 
       {/* {stage == 5 && (
@@ -161,11 +194,9 @@ export default function SessionPage() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
-      const date = new Date()
-      const day = date.getDay()
-      const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
-      const feelingJson = `{"stage" : 1,"feelings":"${params.get('feelings')}","day":"${days[day]}"}`
-      setMetadata(JSON.parse(feelingJson));
+      const date = new Date().toString(); // Fri Jul 25 2025 00:57:54 GMT-0400 (Eastern Daylight Time)'
+      const metadataJson = `{"stage" : 1,"feelings":"${params.get('feelings')}","date":"${date}"}`
+      setMetadata(JSON.parse(metadataJson));
     }
   }, []);
   if(!metadata){
