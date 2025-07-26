@@ -51,6 +51,11 @@ export function DailyPlan(plan: Props) {
         setState(init)
     },[plan])
 
+    const [editing, setEditing] = useState<number | null>(null);
+    const inputRef = useRef<HTMLTextAreaElement | null>(null);
+    useEffect(() => { if (editing !== null) inputRef.current?.focus(); }, [editing]);
+
+
     if(!state){
         return (
             <div>
@@ -58,10 +63,6 @@ export function DailyPlan(plan: Props) {
             </div>
         )
     }
-    
-    const [editing, setEditing] = useState<number | null>(null);
-    const inputRef = useRef<HTMLTextAreaElement | null>(null);
-    useEffect(() => { if (editing !== null) inputRef.current?.focus(); }, [editing]);
 
     /* build slots */
     const sorted = [...state].sort((a, b) => hhmmToDate(a.start).getTime() - hhmmToDate(b.start).getTime());
@@ -126,11 +127,18 @@ export function DailyPlan(plan: Props) {
         setState(next); onChange(next); setEditing(null);
     };
     const saveAll = (si: number) => {
-        const sl = slots[si]; if (!sl.block || !inputRef.current) return;
-        let next = sl.idx !== undefined ? splitBlock(state, sl.idx, sl.slotStart) : { ...state };
+        const sl = slots[si]; 
+        if (!sl.block || !inputRef.current) return;
         const gid = sl.block.groupId;
-        next = next.map(b => b.groupId === gid ? { ...b, name: inputRef.current!.value.trim() || b.name } : b);
-        setState(next); onChange(next); setEditing(null);
+        const newName = inputRef.current.value.trim();
+    
+        const next = state.map(b => 
+            b.groupId === gid ? { ...b, name: newName || b.name } : b
+        );
+    
+        setState(next);
+        onChange(next);
+        setEditing(null);
     };
     console.log(editing)
     /* render */
