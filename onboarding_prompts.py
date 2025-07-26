@@ -85,16 +85,16 @@ Please output the information you collected about the user's schedule from the c
   "Sunday":   [ /* ... */ ]
 }
 
-/* Event object shape (used inside each day’s array) */
+/* Event object shape (used inside each day's array) */
 {
   "activity": "string",            // Required. Short label, e.g. "Work", "Gym", "Sleep"
-  "start":    "HH:MM or ''",       // 24-h start time; leave "" if variable
-  "end":      "HH:MM or ''",       // 24-h end time; leave "" if variable
+  "start":    "HH:MM or ''",       // 24-h start time; leave "" if variable, add '+1' if overflows to the next day, for example, "02:00+1"
+  "end":      "HH:MM or ''",       // 24-h end time; leave "" if variable,  add '+1' if overflows to the next day, for example, "02:00+1"
   "approx":   "string (optional)", // e.g. "around noon", "evening"; used when start/end are blank
   "flexible": true|false,          // optional; true if timing floats day-to-day
-  "category": "work | workout | sleep | relax | routine | goals | hobby | other",
+  "category": "work | workout | sleep | relax(e.g: mindfulness) | routine(e.g.: laundry, cleaning) | goals | hobby | other",
   "location": "string (optional)", // e.g. "Office", "Home", "Gym"
-  "details":  "string (optional)"  // any extra notes, e.g. "Includes lunch 12–13"
+  "details":  "string (optional)"  // any extra notes, e.g. "Includes lunch 12-13"
 }
 '''
     ),
@@ -106,9 +106,9 @@ Now that we have collected the user current routine, the next step is to underst
 Question sequence
 • In the existing conversation, check if user has already talked about any changes/improvements they want to make. If yes, ask ONE follow up to
 confirm it and gather more information about it.
-• Ask the user to briefly share any personal goals or lifestyle changes they’re aiming for.
-• Invite them to mention more habits or activties they’d like to add or remove which they not mentioned already.
-• If they don’t address both “add” and “remove,” ask one follow-up to cover the missing side.
+• Ask the user to briefly share any personal goals or lifestyle changes they're aiming for.
+• Invite them to mention more habits or activties they'd like to add or remove which they not mentioned already.
+• If they don't address both “add” and “remove,” ask one follow-up to cover the missing side.
 • If they give goals but no timing preference, ask ONE follow up to understant if any particular time or days work best. Accept flexible or vague response.
 • If the user is not sure about something, let it be.
 • When their high-level goals and add/remove list are clear, just return SATISFIED
@@ -137,26 +137,36 @@ Capture user's aspirations and desired changes in the JSON schema below:
 Return a JSONObject.
 "blocks": [
         {
-          "start": "HH:MM",
-          "end":   "HH:MM",
+          "start": "HH:MM", // add '+1' if overflows to the next day, for example, "02:00+1"
+          "end":   "HH:MM", // add '+1' if overflows to the next day, for example, "02:00+1"
           "name":  "",
-          "category": "work | workout | sleep | relax | routine | goals | hobby | other",
+          "category": "work | workout | sleep | relax(e.g: mindfulness) | routine(e.g.: laundry, cleaning) | goals | hobby | other",
           "location": "",      // optional
           "details":  ""       // optional
         }
       ]
     where each block is an activity.
     Scheduling Rules:
-    1. Break between continuous blocks:
+    1. Explicit Rules. 
+      • If the user specifided a specific day/time for an activity, schedule it exactly there.
+      • Every activity must have a start time, end time, name, and category. For name and category if unclear, use "open" and "other"
+    2. Sleep Block
+      • There should be only one block with the name "sleep".
+      • If the user has multiple sleep timings in a day, call it other sleep terms for e.g. "Afternoon Sleep/Nap"
+    3. User's Aspirations and Goals 
+      • Based on the discussion with user about their aspirations, desired changes and goals, prepare the schedule that move the user from their current routine toward their aspirations.
+      • Like a Licensed Occupational Therapist / Lifestyle Medicine Physician, include some activities that helps user have a better lifestyle and achieve their goals. For Example: Mindfulness, Enough Physical Activity, and Better Sleep.
+    4. Break between continuous blocks:
       If the user is working continuously for a long period of time, insert a break that matches an aspiration or suggestion (e.g., meditation or small walk after 2 hours of continuous work). Choose an appropriate length (10-60 min). 
       OR, Instead of a break arrange essentials like meals, workouts between Continuous blocks. 
       Prioritize if this information is available in the context already.
       Split the original block so the break sits in the middle, keeping everything in chronological order.
-    2. Granularity.
-      • Realistic default durations: meals ≈ 30 min, walks ≈ 15-30 mins, workouts ≥ 60 mins.  
+    5. When timing is vague, place it into sensible open slots consistent with user notes.
+    6. Granularity.
+      • Realistic default durations: meals ≈ 30 min, walks ≈ 15-30 mins, workouts ≥ 60 mins, etc.
       • Interpret vague words: morning 09:00, midday 12:00, afternoon 14:00, evening 19:00, night 21:00 (adjust if conflict).
       • Switching between 2 activities also has a small transition time, DO NOT mention that but include it in your planning algorithm
-    3. Gap handling  
+    7. Gap handling  
       • Use unscheduled windows to host remaining aspirations or suggestions.  
       • Otherwise leave them open and label as "Open" (category = other).
           '''  
@@ -186,7 +196,7 @@ Rules
      • Tag these with "targets": "GENERAL".
 3. PRIORITISE
    • Classify each suggestion as HIGHEST, HIGH, MEDIUM, LOW, or LEAST.
-     Base on health impact + relevance to the user’s stated aims.
+     Base on health impact + relevance to the user's stated aims.
 4. OUTPUT FORMAT
    • Return JSON only, omit empty tiers, max 3 suggestions per tier.
    • For every suggestion include:
@@ -258,7 +268,7 @@ Output schema  (return JSON only)
           "start": "HH:MM",
           "end":   "HH:MM",
           "name":  "",
-          "category": "work | workout | sleep | relax | routine | goals | hobby | other",
+          "category": "work | workout | sleep | relax(e.g: mindfulness) | routine(e.g.: laundry, cleaning) | goals | hobby | other",
           "location": "",      // optional
           "details":  ""       // optional
         }

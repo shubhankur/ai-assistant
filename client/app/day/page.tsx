@@ -1,3 +1,4 @@
+'use client'
 import React, { useState, useEffect } from "react";
 import { DailyPlan } from "@/components/DailyPlan"; // adjust relative path as needed
 import { DailyQuickView } from "@/components/DailyQuickView";   // assumes DailyPlanView component exists
@@ -19,7 +20,6 @@ export interface Block {
   end: string;     // HH:MM
   name: string;
   category: string;
-  groupId?: string;           // link fragments of one logical block
   location?: string;
   details?: string;
 }
@@ -37,7 +37,7 @@ export interface DayPlan {
    ======================================================================= */
 
 const sample = {
-    "date" : "2025-25-07",
+    "date" : "07-26-2025",
     "blocks": [
         { start: "07:00", end: "07:30", name: "Meditation", category: "relax" },
         { start: "07:30", end: "08:00", name: "Breakfast", category: "routine" },
