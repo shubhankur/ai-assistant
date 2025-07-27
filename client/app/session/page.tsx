@@ -26,12 +26,14 @@ function SessionContent() {
   useEffect(() => {
     if (todayPlanStream.length != 0) {
       const latest = todayPlanStream[todayPlanStream.length - 1].text;
-      const parsed = JSON.parse(latest);
+      const parsed : DayPlan = JSON.parse(latest);
+      parsed.date = new Date().toDateString();
       setTodayPlan(parsed);
     }
     else if (tomorrowPlanStream.length != 0) {
       const latest = tomorrowPlanStream[tomorrowPlanStream.length - 1].text;
-      const parsed = JSON.parse(latest);
+      const parsed : DayPlan = JSON.parse(latest);
+      parsed.date = new Date(new Date().setDate(new Date().getDate() + 1)).toDateString();
       setTomorrowPlan(parsed);
     }
   }, [todayPlanStream, tomorrowPlanStream]);
