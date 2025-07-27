@@ -257,22 +257,17 @@ Scheduling rules
 
 Output schema  (return JSON only)
 {{
-  "days": [
-    {{
-      "day": "Monday",
-      "blocks": [
-        {{
-          "start": "HH:MM",
-          "end":   "HH:MM",
-          "name":  "",
-          "category": "work | workout | sleep | relax(e.g: mindfulness) | routine(e.g.: laundry, cleaning) | goals | hobby | other",
-          "location": "",      // optional
-          "details":  ""       // optional
-        }}
-      ]
-    }}
-    /* Tuesday … Sunday */
-  ]
+  /*  Top-level keys: the seven days of the week  */
+  "Monday":   [ /* array of event objects */ ],
+
+/* Event object shape (used inside each day's array) */
+{{
+  "start": "HH:MM",
+  "end":   "HH:MM",
+  "name":  "",
+  "category": "work | workout | sleep | relax(e.g: mindfulness) | routine(e.g.: laundry, cleaning) | goals | hobby | other",
+  "location": "",      // optional
+  "details":  ""       // optional
 }}
 
 Return JSON only** exactly matching the schema—no commentary.
