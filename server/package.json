@@ -1,0 +1,23 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "start": "nodemon index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "express": "^5.1.0",
+    "mongoose": "^8.16.5"
+  },
+  "devDependencies": {
+    "jest": "^30.0.5",
+    "nodemon": "^3.1.10",
+    "supertest": "^7.1.4"
+  }
+}
