@@ -12,6 +12,25 @@ router.post('/', async (req, res) => {
   }
 });
 
+router.get('/', async (req, res) => {
+  try {
+    if (req.query.email) {
+      const doc = await User.findOne({ email: req.query.email });
+      if (!doc) return res.status(404).json({ error: 'Not found' });
+      return res.json(doc);
+    }
+    if (req.query.phone) {
+      const doc = await User.findOne({ phone: req.query.phone });
+      if (!doc) return res.status(404).json({ error: 'Not found' });
+      return res.json(doc);
+    }
+    const docs = await User.find();
+    res.json(docs);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 router.get('/:id', async (req, res) => {
   try {
     const doc = await User.findById(req.params.id);
@@ -22,25 +41,6 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-router.get('/email/:email', async (req, res) => {
-  try {
-    const doc = await User.findOne({ email: req.params.email });
-    if (!doc) return res.status(404).json({ error: 'Not found' });
-    res.json(doc);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
-
-router.get('/phone/:phone', async (req, res) => {
-  try {
-    const doc = await User.findOne({ phone: req.params.phone });
-    if (!doc) return res.status(404).json({ error: 'Not found' });
-    res.json(doc);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
 
 router.put('/:id', async (req, res) => {
   try {

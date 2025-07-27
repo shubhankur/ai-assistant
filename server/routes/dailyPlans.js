@@ -12,6 +12,24 @@ router.post('/', async (req, res) => {
   }
 });
 
+router.get('/', async (req, res) => {
+  try {
+    if (req.query.userid && req.query.date) {
+      const doc = await DailyPlan.findOne({ userid: req.query.userid, date: req.query.date });
+      if (!doc) return res.status(404).json({ error: 'Not found' });
+      return res.json(doc);
+    }
+    if (req.query.userid) {
+      const docs = await DailyPlan.find({ userid: req.query.userid });
+      return res.json(docs);
+    }
+    const docs = await DailyPlan.find();
+    res.json(docs);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 router.get('/:id', async (req, res) => {
   try {
     const doc = await DailyPlan.findById(req.params.id);
@@ -22,24 +40,6 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-router.get('/user/:userid', async (req, res) => {
-  try {
-    const docs = await DailyPlan.find({ userid: req.params.userid });
-    res.json(docs);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
-
-router.get('/user/:userid/date/:date', async (req, res) => {
-  try {
-    const doc = await DailyPlan.findOne({ userid: req.params.userid, date: req.params.date });
-    if (!doc) return res.status(404).json({ error: 'Not found' });
-    res.json(doc);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
 
 router.put('/:id', async (req, res) => {
   try {

@@ -12,6 +12,19 @@ router.post('/', async (req, res) => {
   }
 });
 
+router.get('/', async (req, res) => {
+  try {
+    if (req.query.userid) {
+      const docs = await CurrentRoutine.find({ userid: req.query.userid });
+      return res.json(docs);
+    }
+    const docs = await CurrentRoutine.find();
+    res.json(docs);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 router.get('/:id', async (req, res) => {
   try {
     const doc = await CurrentRoutine.findById(req.params.id);
@@ -22,14 +35,6 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-router.get('/user/:userid', async (req, res) => {
-  try {
-    const docs = await CurrentRoutine.find({ userid: req.params.userid });
-    res.json(docs);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
 
 router.put('/:id', async (req, res) => {
   try {
