@@ -25,6 +25,7 @@
     "react-dom": "^19.0.0",
     "react-type-animation": "^3.2.0",
     "tailwind-merge": "^3.3.1",
+    "uuid": "^11.1.0",
     "vara": "^1.4.1"
   },
   "devDependencies": {

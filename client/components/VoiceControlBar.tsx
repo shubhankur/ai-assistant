@@ -69,25 +69,16 @@ export function VoiceControlBar({
   );
 
   return (
-    <div className='lk-agent-control-bar'>
+    <div>
       {visibleControls.microphone && (
-        <div className="lk-button-group">
+        <div>
           <TrackToggle
             source={Track.Source.Microphone}
             showIcon={true}
             onChange={microphoneOnChange}
             onDeviceError={(error) => onDeviceError?.({ source: Track.Source.Microphone, error })}
           >
-            <BarVisualizer trackRef={micTrackRef} barCount={7} options={{ minHeight: 5 }} />
           </TrackToggle>
-          <div className="lk-button-group-menu">
-            <MediaDeviceMenu
-              kind="audioinput"
-              onActiveDeviceChange={(_kind, deviceId) =>
-                saveAudioInputDeviceId(deviceId ?? 'default')
-              }
-            />
-          </div>
         </div>
       )}
 

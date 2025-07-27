@@ -3,7 +3,7 @@ import { AccessToken } from 'livekit-server-sdk';
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const feelings = searchParams.get('feelings') || '';
+  const metadata = searchParams.get('metadata') || '';
   const id = Math.random().toString(36).slice(2, 10)
   const identity = `user-${id}`;
   const roomName = `room-${id}`
@@ -17,7 +17,7 @@ export async function GET(req: Request) {
 
   const at = new AccessToken(apiKey, apiSecret, { identity });
   at.addGrant({ roomJoin: true, room: roomName, canUpdateOwnMetadata: true, canPublishData: true, canSubscribe: true });
-  at.metadata = feelings;
+  at.metadata = metadata;
   const token = await at.toJwt();
 
   return NextResponse.json({ token, serverUrl });

@@ -21,15 +21,15 @@ export default function TranscriptionView() {
 
       {/* Scrollable content */}
       <div ref={containerRef} className="h-full flex flex-col gap-2 overflow-y-auto px-4 py-8">
-        {agentTranscriptions.map((segment) => (
+        {agentTranscriptions.length > 0 && (
           <div
-            id={segment.id}
-            key={segment.id}
+            id={agentTranscriptions[agentTranscriptions.length - 1].id}
+            key={agentTranscriptions[agentTranscriptions.length - 1].id}
             className={"p-2 self-start fit-content"}
           >
-            {segment.text}
+            {agentTranscriptions[agentTranscriptions.length - 1].text}
           </div>
-        ))}
+        )}
       </div>
     </div>
   );

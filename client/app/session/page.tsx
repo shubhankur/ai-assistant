@@ -1,16 +1,14 @@
 'use client'
 import React, { useEffect, useState } from 'react';
-import { BarVisualizer, useVoiceAssistant, useTextStream, RoomAudioRenderer, useLiveKitRoom, useRoomInfo, useRoomContext} from '@livekit/components-react';
+import {useVoiceAssistant, useTextStream, useRoomContext} from '@livekit/components-react';
 import ConnectRoom from '../../components/ConnectRoom';
 import TranscriptionView from '@/components/TranscriptionView'
-import WeeklyRoutinePreview, { RoutineData } from '@/components/WeeklyRoutine';
-import { RoutineSummary } from '@/components/RoutineSummary';
-import { SuggestionList } from '@/components/SuggestionList';
+import { BarVisualizer, RoomAudioRenderer } from '@livekit/components-react';
 import { VolumeWarning } from '@/components/VolumeWarning';
 import { VoiceControlBar } from '@/components/VoiceControlBar';
 import { LoadingView } from '@/components/LoadingView';
-import { suggestionListLoading, weeklyRoutineLoading } from '@/components/MessageList';
 import { Button } from '@/components/ui/button';
+import { DayPlan } from '../day/page';
 
 function SessionContent() {
   const {state, agentAttributes, audioTrack} = useVoiceAssistant();
@@ -19,61 +17,24 @@ function SessionContent() {
   console.log("room local participant: ", roomCtx.localParticipant.identity)
   const stage = Number(agentAttributes?.stage ?? 1);
 
-  const { textStreams: suggestedChangesStreams } = useTextStream("suggestion_list");
-  const { textStreams: routineSummaryStream } = useTextStream("routine_preview");
-  const { textStreams: weekStreams }   = useTextStream("weekly_routine"); 
+  const {textStreams : todayPlanStream} = useTextStream("today_plan");
+  const {textStreams : tomorrowPlanStream} = useTextStream("tomorrow_plan");
 
-  const [suggestedChanges, setSuggestedChanges] = useState()
-  // const [anchors, setAnchors] = useState<Anchor[]>([])
-  const [routineSummary, setRoutineSummary] = useState()
-  const [weekData, setWeekData] = useState<RoutineData>()
-
-  /* ------------- whenever the suggested changes arrives ----------------- */
+  const [todayPlan, setTodayPlan] = useState<DayPlan>()
+  const [tomorrowPlan, setTomorrowPlan] = useState<DayPlan>()
+  /* ------------- whenever the daily plan arrives ----------------- */
   useEffect(() => {
-    if (suggestedChangesStreams.length === 0) return;
-    const latest = suggestedChangesStreams[suggestedChangesStreams.length - 1].text;
-    console.log("suggested changes", latest)
-    if (!latest) return;
-
-    try {
+    if (todayPlanStream.length != 0) {
+      const latest = todayPlanStream[todayPlanStream.length - 1].text;
       const parsed = JSON.parse(latest);
-      console.log("suggested changes parsed", parsed)
-      setSuggestedChanges(parsed)
-    } catch (e) {
-      console.error("failed to parse anchors payload", e);
+      setTodayPlan(parsed);
     }
-  }, [suggestedChangesStreams]);
-
-  /* ------------- whenever the routine summary arrives ----------------- */
-  useEffect(() => {
-    if (routineSummaryStream.length === 0) return;
-    const latest = routineSummaryStream[routineSummaryStream.length - 1].text;
-    console.log("routine_summary", latest)
-    if (!latest) return;
-
-    try {
+    else if (tomorrowPlanStream.length != 0) {
+      const latest = tomorrowPlanStream[tomorrowPlanStream.length - 1].text;
       const parsed = JSON.parse(latest);
-      console.log("routine_summary_parsed", parsed)
-      setRoutineSummary(parsed)
-    } catch (e) {
-      console.error("failed to parse anchors payload", e);
+      setTomorrowPlan(parsed);
     }
-  }, [routineSummaryStream]);
-
-  /* ------------- whenever the final weekly grid arrives ----------------- */
-  useEffect(() => {
-    if (weekStreams.length === 0) return;
-    const latest = weekStreams[weekStreams.length - 1].text;
-    console.log("weekStreams", latest)
-    if (!latest) return;
-    try {
-      const parsed = JSON.parse(latest);
-      console.log("weekStreams_parsed", parsed)
-      if (parsed.days) setWeekData(parsed as RoutineData);
-    } catch (e) {
-      console.error("failed to parse weekData payload", e);
-    }
-  }, [weekStreams]);
+  }, [todayPlanStream, tomorrowPlanStream]);
 
   console.log("stage", stage)
 
@@ -83,29 +44,41 @@ function SessionContent() {
       })
       console.log("sending stage", roomCtx.localParticipant.attributes.stage)
   }
+
+  useEffect(() => {
+    if (stage === 5) {
+      if (todayPlan) {
+        const param = encodeURIComponent(JSON.stringify(todayPlan));
+        window.location.assign(`/day?plan=${param}`);
+      } else if (tomorrowPlan) {
+        const param = encodeURIComponent(JSON.stringify(tomorrowPlan));
+        window.location.assign(`/day?plan=${param}`);
+      }
+    }
+  }, [stage, todayPlan, tomorrowPlan]);
+
   return (
     <div className="relative flex flex-col w-full h-full items-center">
       {/* ToDo; Get device volume when media is being played and use that*/}
       <VolumeWarning volume={1} />
-
-      {/* ToDo: Add a skip or continue later button */}
-      <Button className='bg-white text-black'
-        onClick={() => updateStage(7)}
-      >
-        Skip
-      </Button>
       <AgentVisualizer />
 
       {stage == 2 && 
         (
           <div>
-            <Button className='bg-white text-black'
+            <Button className='bg-white text-black mb-2'
               onClick={() => updateStage(3)}>
-                Let's Go
+                I have 5 uninterrupted minutes
             </Button>
           </div>
         )
       }
+
+      <Button className='bg-white text-black'
+        onClick={() => updateStage(7)}
+      >
+        Skip
+      </Button>
       
       {stage < 5 &&
         (
@@ -115,18 +88,24 @@ function SessionContent() {
         )}
 
       {stage == 5 && (
+        (!todayPlan && !tomorrowPlan) ? (
+          <LoadingView messages={["Loading your schedule..."]} />
+        ) : null
+      )}
+
+      {/* {stage == 5 && (
         suggestedChanges ? (<SuggestionList data={suggestedChanges} />) :
         (<>
           <LoadingView messages={suggestionListLoading} />
         </>)
-      )}
+      )} */}
 
-      {stage == 6 && (
+      {/* {stage == 6 && (
         weekData ? (<WeeklyRoutinePreview data={weekData} />) :
         (<>
           <LoadingView messages={weeklyRoutineLoading} />
         </>)
-      )}
+      )} */}
 
     </div>
   )
@@ -136,7 +115,7 @@ function AgentVisualizer() {
   const { state: agentState, audioTrack } = useVoiceAssistant();
   return (
     <>
-      <div className="h-[300px] w-full">
+      <div className="h-[200px] w-full">
         <BarVisualizer
           state={agentState}
           barCount={5}
@@ -153,15 +132,24 @@ function AgentVisualizer() {
 }
 
 export default function SessionPage() {
-  const [feelings, setFeelings] = useState('');
+  const [metadata, setMetadata] = useState<JSON>();
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
-      setFeelings(params.get('feelings') || '');
+      const date = new Date().toString(); // Fri Jul 25 2025 00:57:54 GMT-0400 (Eastern Daylight Time)'
+      const metadataJson = `{"stage" : 1,"feelings":"${params.get('feelings')}","date":"${date}"}`
+      setMetadata(JSON.parse(metadataJson));
     }
   }, []);
+  if(!metadata){
+    return (
+      <div>
+        connecting...
+      </div>
+    )
+  }
   return (
-    <ConnectRoom feelings={feelings}>
+    <ConnectRoom metadata={metadata}>
       <SessionContent />
     </ConnectRoom>
   );
