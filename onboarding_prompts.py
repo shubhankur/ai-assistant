@@ -145,25 +145,25 @@ Return a JSONObject.
       • If the user specifided a specific day/time for an activity, schedule it exactly there.
       • Every activity must have a start time, end time, name, and category. For name and category if unclear, use "open" and "other"
     2. Sleep Block
-      • There should be only one block with the name "sleep".
+      • There should be only one block with the name "Sleep".
       • If the user has multiple sleep timings in a day, call it other sleep terms for e.g. "Afternoon Sleep/Nap"
     3. Wake Up Block
       • There should always be one and only one Wake Up block which demonstrates start of the day.
       • If the user has multiple sleep timings in a day, call it other sleep terms for e.g. "Afternoon Sleep/Nap"
-    3. User's Aspirations and Goals 
+    4. User's Aspirations and Goals 
       • Based on the discussion with user about their aspirations, desired changes and goals, prepare the schedule that move the user from their current routine toward their aspirations.
       • Like a Licensed Occupational Therapist / Lifestyle Medicine Physician, include some activities that helps user have a better lifestyle and achieve their goals. For Example: Mindfulness, Enough Physical Activity, and Better Sleep.
-    4. Break between continuous blocks:
+    5. Break between continuous blocks:
       If the user is working continuously for a long period of time, insert a break that matches an aspiration or suggestion (e.g., meditation or small walk after 2 hours of continuous work). Choose an appropriate length (10-60 min). 
       OR, Instead of a break arrange essentials like meals, workouts between Continuous blocks. 
       Prioritize if this information is available in the context already.
       Split the original block so the break sits in the middle, keeping everything in chronological order.
-    5. When timing is vague, place it into sensible open slots consistent with user notes.
-    6. Granularity.
+    6. When timing is vague, place it into sensible open slots consistent with user notes.
+    7. Granularity.
       • Realistic default durations: meals ≈ 30 min, walks ≈ 15-30 mins, workouts ≥ 60 mins, etc.
       • Interpret vague words: morning 09:00, midday 12:00, afternoon 14:00, evening 19:00, night 21:00 (adjust if conflict).
       • Switching between 2 activities also has a small transition time, DO NOT mention that but include it in your planning algorithm
-    7. Gap handling  
+    8. Gap handling  
       • Use unscheduled windows to host remaining aspirations or suggestions.  
       • Otherwise leave them open and label as "Open" (category = other).
           '''  
