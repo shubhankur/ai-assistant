@@ -65,7 +65,7 @@ export function DailyPlan(plan: DayPlan) {
     const firstActive = sorted[0];
     const start = hhmmToDate(firstActive.start);
     const firstSleep = sorted.find(b => b.name.toLowerCase() === "sleep");
-    const endTs = firstSleep ? hhmmToDate(firstSleep.start).getTime() + MS30 * 2 : hhmmToDate(sorted.at(-1)!.end).getTime();
+    const endTs = firstSleep ? hhmmToDate(firstSleep.start).getTime() : hhmmToDate(sorted.at(-1)!.end).getTime();
     type Slot = {
         time: string,
         block?: BlockWithGroupId,
@@ -79,10 +79,24 @@ export function DailyPlan(plan: DayPlan) {
         const blk = idx >= 0 ? sorted[idx] : undefined; 
         slots.push({ 
             time: fmt(d), 
-            block: blk?.category === "sleep" ? { ...blk, name: "Sleep" } : blk, 
+            block: blk, 
             idx: idx >= 0 ? idx : undefined, 
             slotStart: d 
         });
+    }
+    //push sleep block
+    if(firstSleep){
+        const sleepBlockEnds = endTs + MS30 * 2
+        for (let t = hhmmToDate(firstSleep.start).getTime(); t < sleepBlockEnds; t += MS30){
+            const d = new Date(t);
+            const idx = sorted.indexOf(firstSleep)
+            slots.push({ 
+                time: fmt(d), 
+                block: firstSleep, 
+                idx: idx >= 0 ? idx : undefined, 
+                slotStart: d 
+            });
+        }
     }
 
     /* split helper */

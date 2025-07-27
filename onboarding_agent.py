@@ -71,14 +71,15 @@ class OnboardingAgent(Agent):
         self._room = None
         self.stage = 1
         self.user_feeling = None
+        self.stage3_chat_ctx = None
         self.stage3_task = None
-        self.stage3_response = None
         self.stage2_turn = 0
         self.today = ""
         self.tomorrow = ""
         self.date = ""
         self.time = ""
         self.timezone = ""
+        self.stage3_response_json = None
         self.today_plan_json = None
         self.tomorrow_plan_json = None
         self.stage4_output_json = None
@@ -110,24 +111,37 @@ class OnboardingAgent(Agent):
     async def on_room_disconnected(self, reason: DisconnectReason):
         print("WARN: Room Disconnected ", reason)
         chat_ctx = self.chat_ctx
-        if(self.stage == 4 or self.stage == 5):
+        if(self.stage == 5):
+            if(self.stage3_response_json is None):
+                prompt = ONBOARDING_PROMPTS["stage3_output"]
+                try:
+                    stage3_response = await self._llm_complete(prompt, self.stage3_chat_ctx)
+                    stage3_response_json = self._parse_json(stage3_response)
+                    if(stage3_response_json is None):
+                        print("Error: stage3_response was not a valid json")
+                    else:
+                        self.stage3_response_json = stage3_response_json
+                                    #ToDo: Store at mongo
+                except Exception as exc:
+                    print(f"Stage 3 failed: {exc}")
+                    return
+                print("Stage 3 response ready")
             if(self.today_plan_json is None):
                 today_plan_json = await self.get_daily_plan(self.today, chat_ctx)
                 if(today_plan_json is None):
-                                        #ToDo: Maybe ask to regenerate
+                                    #ToDo: Maybe ask to regenerate
                     print("Error: today_plan_response was not a valid json")
                 else:
-                                    #Save to Mongo
-                    pass
+                    self.today_plan_json = today_plan_json
+                                    #ToDo: Save to Mongo
             if(self.tomorrow_plan_json is None):
-                tomorrow_plan_json = await self.get_daily_plan(self.today, chat_ctx)
+                tomorrow_plan_json = await self.get_daily_plan(self.tomorrow, chat_ctx)
                 if(tomorrow_plan_json is None):
-                                        #ToDo: Maybe ask to regenerate
+                                    #ToDo: Maybe ask to regenerate
                     print("Error: tomorrow_plan_response was not a valid json")
                 else:
-                                    #Save to Mongo
                     self.tomorrow_plan_json = tomorrow_plan_json
-                    pass
+                                    #ToDo: Save to Mongo
             await self.handle_post_stage4()
             await self._room.disconnect()
 
@@ -259,16 +273,9 @@ class OnboardingAgent(Agent):
                         yield chunk
                         if(response.upper() == validation_signal):
                             print("stage 3 satisfied")
-
-                            #store output
-                            prompt = ONBOARDING_PROMPTS["stage3_output"]
-                            self.stage3_task = asyncio.create_task(
-                                self._llm_complete(prompt, chat_ctx)
-                            )
-                            self.stage3_task.add_done_callback(self._store_stage3_output)
-
                             #update to stage4
                             await self.update_stage(4, chat_ctx)
+                            self.stage3_chat_ctx = chat_ctx
                             raise StopResponse()
                         elif(len(response) > 100):
                             #do something
@@ -284,9 +291,9 @@ class OnboardingAgent(Agent):
                         yield chunk
                         if(response.upper() == validation_signal):
                             print("stage 4 satisfied")
-                            #1. Generate plan for today or tomorrow, Send to Client And Save to Mongo      
-                            await self.handle_stage4(chat_ctx) #this causes client to move out of the session page, so room will get disconnected   
                             await self.set_stage(5)
+                            #Generate plan for today or tomorrow, Send to Client And Save to Mongo
+                            await self.handle_stage4(chat_ctx) #this causes client to move out of the session page, so room will get disconnected   
                             await self._room.disconnect()
                             raise StopResponse()
                         elif(len(response) > 100):
@@ -331,9 +338,8 @@ class OnboardingAgent(Agent):
             else:
                 self.stage4_output_json = stage4_output_json
                                     #mongo store
-                pass
         if(self.habit_reformation_json is None):
-                            #2. Async Generate Ongoing Reformation list, Save to Mongo
+                            #2. Generate Ongoing Reformation list, Save to Mongo
             habit_reformation_prompt = ONBOARDING_PROMPTS["habit_reformation_prompt"]
             habit_reformation_res = await self._llm_complete(habit_reformation_prompt, chat_ctx)
             habit_reformation_json = self._parse_json(habit_reformation_res)
@@ -343,10 +349,8 @@ class OnboardingAgent(Agent):
             else:
                 self.habit_reformation_json = habit_reformation_json
                                     #mongo store
-                pass
-
         if(self.weekly_plan_json is None):
-                            #3. Async Generate Weekly Plan, Save to Mongo
+                            #3. Generate Weekly Plan, Save to Mongo
             weekly_plan_prompt = ONBOARDING_PROMPTS["weekly_plan"]
             weekly_plan_res = await self._llm_complete(weekly_plan_prompt, chat_ctx)
             weekly_plan_json = self._parse_json(weekly_plan_res)
@@ -356,8 +360,7 @@ class OnboardingAgent(Agent):
             else:
                 self.weekly_plan_json = weekly_plan_json
                                     #mongo store
-                pass
-    
+                                    #     
     async def get_daily_plan(self, input_day : str, chat_ctx : llm.ChatContext) -> json:
         day_plan_prompt = ONBOARDING_PROMPTS["today_plan"].format(day=input_day)
         day_plan_res = await self._llm_complete(day_plan_prompt, chat_ctx)
@@ -385,7 +388,7 @@ class OnboardingAgent(Agent):
 
     def _store_stage3_output(self, task: asyncio.Task[str]) -> None:
         try:
-            self.stage3_response = task.result()   # exception surfaces here
+            self.stage3_response_json = task.result()   # exception surfaces here
         except Exception as exc:
             print(f"Stage 3 failed: {exc}")
             return
