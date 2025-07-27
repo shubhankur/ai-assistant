@@ -1,4 +1,5 @@
 import json
+import os
 import re
 import time
 import tiktoken
@@ -14,8 +15,12 @@ from livekit.rtc.participant import Participant
 from collections.abc import AsyncGenerator
 from livekit.agents.types import NOT_GIVEN
 from datetime import datetime
+from dotenv import load_dotenv
 
 from onboarding_prompts import ONBOARDING_PROMPTS
+load_dotenv('.env', override=True)
+
+server_url = os.getenv('SERVER_URL')
 
 def parse_js_date_string(date_str):
     # Example: "Fri Jul 25 2025 00:57:54 GMT-0400 (Eastern Daylight Time)"
@@ -121,7 +126,7 @@ class OnboardingAgent(Agent):
                         print("Error: stage3_response was not a valid json")
                     else:
                         self.stage3_response_json = stage3_response_json
-                                    #ToDo: Store at mongo
+                                   
                 except Exception as exc:
                     print(f"Stage 3 failed: {exc}")
                     return

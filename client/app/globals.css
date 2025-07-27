@@ -18,3 +18,8 @@
   height: min-content;
   margin-right: 1rem;
 }
+
+.lk-audio-bar-visualizer {
+  padding: 0 !important;
+  background-color: black !important;
+}

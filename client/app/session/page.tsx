@@ -60,27 +60,29 @@ function SessionContent() {
   }, [stage, todayPlan, tomorrowPlan]);
 
   return (
-    <div className="relative flex flex-col w-full h-full items-center">
+    <div className="flex flex-col items-center bg-black">
       {/* ToDo; Get device volume when media is being played and use that*/}
       <VolumeWarning volume={1} />
       <AgentVisualizer />
+      <div className='flex justify-center'>
+        <VoiceControlBar/>
+        <Button variant="outline" className='bg-blue-600 ml-2'
+          onClick={() => updateStage(7)}
+        >
+          Skip
+        </Button>
+      </div>
 
       {stage == 2 && 
         (
           <div>
-            <Button className='bg-white text-black mb-2'
+            <Button variant="outline" className='bg-blue-600'
               onClick={() => updateStage(3)}>
                 I have 5 uninterrupted minutes
             </Button>
           </div>
         )
       }
-
-      <Button className='bg-white text-black'
-        onClick={() => updateStage(7)}
-      >
-        Skip
-      </Button>
       
       {stage < 5 &&
         (
@@ -91,23 +93,9 @@ function SessionContent() {
 
       {stage == 5 && (
         (!todayPlan && !tomorrowPlan) ? (
-          <LoadingView messages={["Loading your schedule..."]} />
+          <LoadingView messages={["Analyzing Current Routine, Analyzing Aspirations, Preparing your plan, Loading your schedule..."]} />
         ) : null
       )}
-
-      {/* {stage == 5 && (
-        suggestedChanges ? (<SuggestionList data={suggestedChanges} />) :
-        (<>
-          <LoadingView messages={suggestionListLoading} />
-        </>)
-      )} */}
-
-      {/* {stage == 6 && (
-        weekData ? (<WeeklyRoutinePreview data={weekData} />) :
-        (<>
-          <LoadingView messages={weeklyRoutineLoading} />
-        </>)
-      )} */}
 
     </div>
   )
@@ -124,10 +112,10 @@ function AgentVisualizer() {
           trackRef={audioTrack}
           className="agent-visualizer"
           options={{ minHeight: 24 }}
-        />
+        >
+        </BarVisualizer>      
       </div>
       <RoomAudioRenderer/>
-      <VoiceControlBar/>
     </>
 
   );
