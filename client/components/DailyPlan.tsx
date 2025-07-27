@@ -30,16 +30,12 @@ const onChange = (b: BlockWithGroupId[]) => {
 }
 
 /* ------------------------ Component ---------------------------------- */
-interface Props {
-    date: string
-    blocks: Block[]
-}
 
 interface BlockWithGroupId extends Block {
     groupId: string;
 }
 
-export function DailyPlan(plan: Props) {
+export function DailyPlan(plan: DayPlan) {
     // ensure every block has groupId
     const [state, setState] = useState<BlockWithGroupId[]>();
     useEffect(() => {

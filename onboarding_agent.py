@@ -1,13 +1,16 @@
 import json
 import re
 import time
+import tiktoken
+from livekit.plugins.openai import llm
+from typing import Optional
 import asyncio
 from livekit.agents import llm, Agent, AgentSession, ModelSettings
-from livekit.rtc import Room
-from livekit.agents.voice import SpeechHandle
+from livekit.rtc import Room, DisconnectReason
 from livekit.agents.llm import ChatContext, FunctionTool, RawFunctionTool
+from livekit.agents.types import APIConnectOptions
 from livekit.agents.llm.tool_context import StopResponse
-from livekit.rtc.participant import RemoteParticipant, Participant
+from livekit.rtc.participant import Participant
 from collections.abc import AsyncGenerator
 from livekit.agents.types import NOT_GIVEN
 from datetime import datetime
@@ -27,6 +30,40 @@ def parse_js_date_string(date_str):
     else:
         return None, None, None, None
 
+def count_total_tokens_from_chat_ctx(
+    chat_ctx: llm.ChatContext,
+    prompt: Optional[str] = None,
+    model: str = "gpt-3.5-turbo"
+) -> int:
+    """
+    Count total tokens used by ChatCtx history + optional new prompt.
+
+    Args:
+        chat_ctx: LiveKit llm.ChatCtx object containing chat history
+        prompt: Optional new prompt string to include in the count
+        model: OpenAI model name for token encoding (default: gpt-3.5-turbo)
+
+    Returns:
+        int: Total number of tokens
+    """
+    try:
+        enc = tiktoken.encoding_for_model(model)
+
+        total_tokens = 0
+        for message in chat_ctx.to_provider_format(format="openai"):
+            total_tokens += 4  # message overhead
+            total_tokens += len(enc.encode(message.get("content", "")))
+
+        if prompt:
+            total_tokens += 4  # new prompt message overhead
+            total_tokens += len(enc.encode(prompt))
+
+        total_tokens += 1  # assistant reply primer token
+        return total_tokens
+    except Exception as e:
+        print("Error counting tokens ", e.__cause__)
+        return 0
+
 class OnboardingAgent(Agent):
     def __init__(self, session: AgentSession):
         super().__init__(instructions="")
@@ -42,7 +79,11 @@ class OnboardingAgent(Agent):
         self.date = ""
         self.time = ""
         self.timezone = ""
-
+        self.today_plan_json = None
+        self.tomorrow_plan_json = None
+        self.stage4_output_json = None
+        self.habit_reformation_json = None
+        self.weekly_plan_json = None
     
     async def on_participant_attribute_changed(self, attributes : dict, participant : Participant) -> None:
         if(participant.identity.startswith("user")):
@@ -52,7 +93,11 @@ class OnboardingAgent(Agent):
                 print("received stage", stage)
                 if(stage == 3):
                     await self.update_stage(3, ChatContext.empty())
-                    self.session.interrupt()
+                    try:
+                        self.session.interrupt()
+                        print("Stage 2 Interrupted!")
+                    except Exception as e:
+                        print("Stage 2 Interrupted! But received an error", e.__cause__)
                 elif(stage == 7):
                     #ToDo: If the user has skipped. Maybe store the obtained information till now
                     await self.update_stage(7, ChatContext.empty())
@@ -61,6 +106,32 @@ class OnboardingAgent(Agent):
                     except:
                         print("Stopped Response")
                         pass
+    
+    async def on_room_disconnected(self, reason: DisconnectReason):
+        print("WARN: Room Disconnected ", reason)
+        chat_ctx = self.chat_ctx
+        if(self.stage == 4 or self.stage == 5):
+            if(self.today_plan_json is None):
+                today_plan_json = await self.get_daily_plan(self.today, chat_ctx)
+                if(today_plan_json is None):
+                                        #ToDo: Maybe ask to regenerate
+                    print("Error: today_plan_response was not a valid json")
+                else:
+                                    #Save to Mongo
+                    pass
+            if(self.tomorrow_plan_json is None):
+                tomorrow_plan_json = await self.get_daily_plan(self.today, chat_ctx)
+                if(tomorrow_plan_json is None):
+                                        #ToDo: Maybe ask to regenerate
+                    print("Error: tomorrow_plan_response was not a valid json")
+                else:
+                                    #Save to Mongo
+                    self.tomorrow_plan_json = tomorrow_plan_json
+                    pass
+            await self.handle_post_stage4()
+            await self._room.disconnect()
+
+    
     async def start(self, feeling: str, date: str) -> None:
         self.user_feeling = feeling
         # Parse date string (Fri Jul 25 2025 00:57:54 GMT-0400 (Eastern Daylight Time)) into day, date, time and timezone
@@ -82,15 +153,25 @@ class OnboardingAgent(Agent):
         #user responds if they want to continue
 
     async def _llm_complete(self, system_prompt: str, chat_ctx: llm.ChatContext) -> str:
-        chat_ctx.add_message(role="system", content=[system_prompt])
-        stream = self._session.llm.chat(chat_ctx=chat_ctx)
-        parts: list[str] = []
-        async for chunk in stream:
-            if chunk.delta and chunk.delta.content:
-                parts.append(chunk.delta.content)
-        await stream.aclose()
-        #ToDO: Verify this response is not added to the context
-        return "".join(parts).strip()
+        token_count = count_total_tokens_from_chat_ctx(chat_ctx, system_prompt)
+        if(token_count > 2000):
+            print("WARNING: TOKEN COUNT greater than 2000! Cannot process further.")
+            return ""
+        else:
+            chat_ctx.add_message(role="system", content=[system_prompt])
+            llm_conn_options = APIConnectOptions(
+                timeout=120.0,          # <= raise per-request limit
+                max_retry=3,            # keep whatever retry policy you like
+                retry_interval=2.0
+            )
+            stream = self._session.llm.chat(chat_ctx=chat_ctx, conn_options=llm_conn_options)
+            parts: list[str] = []
+            async for chunk in stream:
+                if chunk.delta and chunk.delta.content:
+                    parts.append(chunk.delta.content)
+            await stream.aclose()
+            #ToDO: Verify this response is not added to the context
+            return "".join(parts).strip()
 
     def _parse_json(self, text: str) -> dict | None:
         """Attempt to parse a JSON object from the given text."""
@@ -148,10 +229,12 @@ class OnboardingAgent(Agent):
                         self.stage2_turn += 1
                     else:
                         response = ""
+                        start_time = time.time()
                         async for chunk in stream:
                             if chunk.delta and chunk.delta.content:
                                 response += chunk.delta.content
                         print("llm node stage 2 response ", response)
+                        print(f"Stage 2 Stream processing took {time.time() - start_time:.2f} seconds")
                         if(response == "NO"):
                             await self.set_stage(-1)
                             system_message = ONBOARDING_PROMPTS["farewell"]
@@ -169,139 +252,111 @@ class OnboardingAgent(Agent):
                     print("llm_node stage3")
                     response = ""
                     start_time = time.time()
-                    iter = 0
                     validation_signal = "SATISFIED"
                     async for chunk in stream:
-                        if response is None:
-                            yield chunk
-                        elif chunk.delta and chunk.delta.content and iter < len(validation_signal):
+                        if(chunk.delta and chunk.delta.content):
                             response += chunk.delta.content
-                            iter += 1
-                        elif(response.upper() == validation_signal):
+                        yield chunk
+                        if(response.upper() == validation_signal):
                             print("stage 3 satisfied")
+
                             #store output
                             prompt = ONBOARDING_PROMPTS["stage3_output"]
                             self.stage3_task = asyncio.create_task(
                                 self._llm_complete(prompt, chat_ctx)
                             )
                             self.stage3_task.add_done_callback(self._store_stage3_output)
+
                             #update to stage4
                             await self.update_stage(4, chat_ctx)
-                            try:
-                                raise StopResponse()
-                            except:
-                                print("Stopped Response")
-                                pass
-                        #ToDo: Some Validation that model did not mess up for example, very long response.
-                        else:
-                            if(response):
-                                print(f"Stage 3 Stream processing took {time.time() - start_time:.2f} seconds")
-                                response += chunk.delta.content
-                                yield response
-                                response = None #ToDo; Validate if it works
+                            raise StopResponse()
+                        elif(len(response) > 100):
+                            #do something
+                            pass
                 elif(self.stage == 4):
                     print("llm_node stage4")
-                    response = ""
+                    response:str = ""
                     start_time = time.time()
-                    iter = 0
                     validation_signal = "SATISFIED"
                     async for chunk in stream:
-                        if response is None:
-                            yield chunk
-                        elif chunk.delta and chunk.delta.content and iter < len(validation_signal):
+                        if(chunk.delta and chunk.delta.content):
                             response += chunk.delta.content
-                            iter += 1
-                        elif(response.upper() == validation_signal):
+                        yield chunk
+                        if(response.upper() == validation_signal):
                             print("stage 4 satisfied")
-                            
-                             #1. Generate plan for today or tomorrow, Send to Client And Save to Mongo      
-                            if datetime.strptime(self.time, "%H:%M").time() < datetime.strptime("12:00", "%H:%M").time():
-                                today_plan_json = await self.get_daily_plan(self.today, chat_ctx)
-                                if(today_plan_json is None):
+                            #1. Generate plan for today or tomorrow, Send to Client And Save to Mongo      
+                            await self.handle_stage4(chat_ctx) #this causes client to move out of the session page, so room will get disconnected   
+                            await self.set_stage(5)
+                            await self._room.disconnect()
+                            raise StopResponse()
+                        elif(len(response) > 100):
+                            #do something
+                            pass
+
+    
+    async def handle_stage4(self, chat_ctx):
+        if datetime.strptime(self.time, "%H:%M:%S").time() < datetime.strptime("12:00:00", "%H:%M:%S").time():
+            today_plan_json = await self.get_daily_plan(self.today, chat_ctx)
+            if(today_plan_json is None):
                                     #ToDo: Maybe ask to regenerate
-                                    print("Error: today_plan_response was not a valid json")
-                                else:
-                                    await self._room.local_participant.send_text(
+                print("Error: today_plan_response was not a valid json")
+            else:
+                self.today_plan_json = today_plan_json
+                await self._room.local_participant.send_text(
                                         topic="today_plan", 
                                         text=json.dumps(today_plan_json)
                                     )
                                     #Save to Mongo
-
-                                tomorrow_plan_json = await self.get_daily_plan(self.tomorrow, chat_ctx)
-                                if(tomorrow_plan_json is None):
+        else:
+            tomorrow_plan_json = await self.get_daily_plan(self.tomorrow, chat_ctx)
+            if(tomorrow_plan_json is None):
                                     #ToDo: Maybe ask to regenerate
-                                    print("Error: today_plan_response was not a valid json")
-                                else:
-                                   #Save to Mongo
-                                   pass
-                            else:
-                                tomorrow_plan_json = await self.get_daily_plan(self.tomorrow, chat_ctx)
-                                if(tomorrow_plan_json is None):
-                                    #ToDo: Maybe ask to regenerate
-                                    print("Error: today_plan_response was not a valid json")
-                                else:
-                                    await self._room.local_participant.send_text(
+                print("Error: today_plan_response was not a valid json")
+            else:
+                self.tomorrow_plan_json = tomorrow_plan_json
+                await self._room.local_participant.send_text(
                                         topic="tomorrow_plan", 
                                         text=json.dumps(tomorrow_plan_json)
                                     )
-                                today_plan_json = await self.get_daily_plan(self.today, chat_ctx)
-                                if(today_plan_json is None):
+                
+    async def handle_post_stage4(self, chat_ctx):
+                            #1. store stage4_output
+        if(self.stage4_output_json is None):
+            stage4_output_prompt = ONBOARDING_PROMPTS["stage4_output"]
+            stage4_output = await self._llm_complete(stage4_output_prompt, chat_ctx)
+            stage4_output_json = self._parse_json(stage4_output)
+            if(stage4_output_json is None):
                                     #ToDo: Maybe ask to regenerate
-                                    print("Error: today_plan_response was not a valid json")
-                                else:
-                                   #Save to Mongo
-                                   pass    
-                            await self.set_stage(5)
-                            
-                            #2. Async store stage4_output
-                            stage4_output_prompt = ONBOARDING_PROMPTS["stage4_output"]
-                            habit_changes = await self._llm_complete(stage4_output_prompt, chat_ctx)
-                            habit_changes_json = self._parse_json(habit_changes)
-                            if(habit_changes_json is None):
-                                #ToDo: Maybe ask to regenerate
-                                print("Error: Habit changes response is not a valid json")
-                            else:
-                                #mongo store
-                                pass
+                print("Error: Habit changes response is not a valid json")
+            else:
+                self.stage4_output_json = stage4_output_json
+                                    #mongo store
+                pass
+        if(self.habit_reformation_json is None):
+                            #2. Async Generate Ongoing Reformation list, Save to Mongo
+            habit_reformation_prompt = ONBOARDING_PROMPTS["habit_reformation_prompt"]
+            habit_reformation_res = await self._llm_complete(habit_reformation_prompt, chat_ctx)
+            habit_reformation_json = self._parse_json(habit_reformation_res)
+            if(habit_reformation_json is None):
+                                    #ToDo: Maybe ask to regenerate
+                print("Error: Habit Reformation response is not a valid json")
+            else:
+                self.habit_reformation_json = habit_reformation_json
+                                    #mongo store
+                pass
 
-                            #3. Async Generate Ongoing Reformation list, Save to Mongo
-                            habit_reformation_prompt = ONBOARDING_PROMPTS["habit_reformation_prompt"]
-                            habit_reformation_res = await self._llm_complete(habit_reformation_prompt, chat_ctx)
-                            habit_reformation_json = self._parse_json(habit_reformation_res)
-                            if(habit_reformation_json is None):
-                                #ToDo: Maybe ask to regenerate
-                                print("Error: Habit Reformation response is not a valid json")
-                            else:
-                                #mongo store
-                                pass
-
-                            #4. Async Generate Weekly Plan, Save to Mongo
-                            weekly_plan_prompt = ONBOARDING_PROMPTS["weekly_plan"]
-                            weekly_plan_res = await self._llm_complete(weekly_plan_prompt, chat_ctx)
-                            weekly_plan_json = self._parse_json(weekly_plan_res)
-                            if(weekly_plan_json is None):
-                                #ToDo: Maybe ask to regenerate
-                                print("Error: Weekly Plan Response is not a valid json")
-                            else:
-                                #mongo store
-                                pass
-
-                            await self._room.disconnect()
-                            try:
-                                raise StopResponse()
-                            except:
-                                print("Stopped Response")
-                                pass
-                        #ToDo: Some Validation that model did not mess up for example, very long response.
-                        else:
-                            if(response):
-                                print(f"Stage 4 Stream processing took {time.time() - start_time:.2f} seconds")
-                                response += chunk.delta.content
-                                yield response
-                                response = None #ToDo; Validate if it works
-                else:
-                    async for chunk in stream:
-                        yield chunk
+        if(self.weekly_plan_json is None):
+                            #3. Async Generate Weekly Plan, Save to Mongo
+            weekly_plan_prompt = ONBOARDING_PROMPTS["weekly_plan"]
+            weekly_plan_res = await self._llm_complete(weekly_plan_prompt, chat_ctx)
+            weekly_plan_json = self._parse_json(weekly_plan_res)
+            if(weekly_plan_json is None):
+                                    #ToDo: Maybe ask to regenerate
+                print("Error: Weekly Plan Response is not a valid json")
+            else:
+                self.weekly_plan_json = weekly_plan_json
+                                    #mongo store
+                pass
     
     async def get_daily_plan(self, input_day : str, chat_ctx : llm.ChatContext) -> json:
         day_plan_prompt = ONBOARDING_PROMPTS["today_plan"].format(day=input_day)
@@ -329,8 +384,12 @@ class OnboardingAgent(Agent):
         self._session.generate_reply()
 
     def _store_stage3_output(self, task: asyncio.Task[str]) -> None:
-        self.stage3_response = task.result()
-        print("Stage 3 response ready ", self.stage3_response)
+        try:
+            self.stage3_response = task.result()   # exception surfaces here
+        except Exception as exc:
+            print(f"Stage 3 failed: {exc}")
+            return
+        print("Stage 3 response ready")
         #ToDo: Also store to Mongo
     
     def set_room(self, room : Room):

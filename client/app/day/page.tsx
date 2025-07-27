@@ -73,7 +73,7 @@ export default function DailyPage() {
   return (
     <div className="min-h-screen bg-black text-gray-100 p-6 space-y-6">
       {/* tabs */}
-      <div className="flex gap-4 border-b border-gray-700 pb-2">
+      <div className="flex gap-4 justify-center border-b border-gray-700 pb-2">
         {([
           { key: "quick", label: "Quick View" },
           { key: "timeline", label: "30‑Min View" }

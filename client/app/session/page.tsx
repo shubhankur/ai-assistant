@@ -1,8 +1,9 @@
 'use client'
 import React, { useEffect, useState } from 'react';
-import { BarVisualizer, useVoiceAssistant, useTextStream, RoomAudioRenderer, useLiveKitRoom, useRoomInfo, useRoomContext} from '@livekit/components-react';
+import {useVoiceAssistant, useTextStream, useRoomContext} from '@livekit/components-react';
 import ConnectRoom from '../../components/ConnectRoom';
 import TranscriptionView from '@/components/TranscriptionView'
+import { BarVisualizer, RoomAudioRenderer } from '@livekit/components-react';
 import { VolumeWarning } from '@/components/VolumeWarning';
 import { VoiceControlBar } from '@/components/VoiceControlBar';
 import { LoadingView } from '@/components/LoadingView';
@@ -114,7 +115,7 @@ function AgentVisualizer() {
   const { state: agentState, audioTrack } = useVoiceAssistant();
   return (
     <>
-      <div className="h-[300px] w-full">
+      <div className="h-[200px] w-full">
         <BarVisualizer
           state={agentState}
           barCount={5}

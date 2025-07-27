@@ -10,6 +10,7 @@ ONBOARDING_PROMPTS = {
         "I will help you organize your life and declutter your mind."
         "And, I will never use our chat for anything else."
         "Do you have 5 minutes to talk right now?"
+        Keep it as short as possible.
         '''
     ),
     "stage2_is_user_continue": "Validate if user wants to continue. Just return 'YES' or 'NO'.",
@@ -32,9 +33,10 @@ BUT ask for ranges when users are completely vague in ONE follow-up, if they are
 - Do NOT ask or suggest anything about changes to the routine.
 - After you have enough to map the week atleast broadly without major gaps, stop questioning and just reply "SATISFIED".
 
+Do not ask these questions as it is. They are to guide you on how to carry on the conversation.
 Question sequence
 Greeting & context
-“Could you tell me a bit about yourself and what keeps you busy most days?”
+“Great! Let's start with understanding your current routine. Could you tell me a bit about yourself and what keeps you busy most days?”
 
 Typical weekday
 “What does a typical weekday look like for you? (main commitments, evening wind-down, sleep timings etc.)”
@@ -74,19 +76,12 @@ This response/question to the user is too long and unnecessary, revaluate and ge
     "stage3_output" : (
 '''
 Please output the information you collected about the user's schedule from the conversation in the following JSON format:
-{
+{{
   /*  Top-level keys: the seven days of the week  */
   "Monday":   [ /* array of event objects */ ],
-  "Tuesday":  [ /* ... */ ],
-  "Wednesday":[ /* ... */ ],
-  "Thursday": [ /* ... */ ],
-  "Friday":   [ /* ... */ ],
-  "Saturday": [ /* ... */ ],
-  "Sunday":   [ /* ... */ ]
-}
 
 /* Event object shape (used inside each day's array) */
-{
+{{
   "activity": "string",            // Required. Short label, e.g. "Work", "Gym", "Sleep"
   "start":    "HH:MM or ''",       // 24-h start time; leave "" if variable, add '+1' if overflows to the next day, for example, "02:00+1"
   "end":      "HH:MM or ''",       // 24-h end time; leave "" if variable,  add '+1' if overflows to the next day, for example, "02:00+1"
@@ -95,7 +90,7 @@ Please output the information you collected about the user's schedule from the c
   "category": "work | workout | sleep | relax(e.g: mindfulness) | routine(e.g.: laundry, cleaning) | goals | hobby | other",
   "location": "string (optional)", // e.g. "Office", "Home", "Gym"
   "details":  "string (optional)"  // any extra notes, e.g. "Includes lunch 12-13"
-}
+}}
 '''
     ),
 
@@ -104,8 +99,7 @@ Please output the information you collected about the user's schedule from the c
         '''
 Now that we have collected the user current routine, the next step is to understand their aspirations and desired routine.
 Question sequence
-• In the existing conversation, check if user has already talked about any changes/improvements they want to make. If yes, ask ONE follow up to
-confirm it and gather more information about it.
+• In the existing conversation, check if user has already talked about any changes/improvements they want to make. If yes, ask ONE follow up to confirm it and gather more information about it.
 • Ask the user to briefly share any personal goals or lifestyle changes they're aiming for.
 • Invite them to mention more habits or activties they'd like to add or remove which they not mentioned already.
 • If they don't address both “add” and “remove,” ask one follow-up to cover the missing side.
@@ -118,7 +112,7 @@ confirm it and gather more information about it.
     "stage4_output" : (
         '''
 Capture user's aspirations and desired changes in the JSON schema below:
-"aspirations": {
+"aspirations": {{
   "goals": [],
 
   "lifestyle_changes": [],
@@ -126,7 +120,7 @@ Capture user's aspirations and desired changes in the JSON schema below:
   "activities_to_add": [],
 
   "activities_to_remove": []
-}
+}}
         '''
     ),
 
@@ -136,14 +130,14 @@ Capture user's aspirations and desired changes in the JSON schema below:
         Now that we know user's current routine and the changes that they want. Create today's plan for the user given that today is {day}. 
 Return a JSONObject.
 "blocks": [
-        {
+        {{
           "start": "HH:MM", // add '+1' if overflows to the next day, for example, "02:00+1"
           "end":   "HH:MM", // add '+1' if overflows to the next day, for example, "02:00+1"
           "name":  "",
           "category": "work | workout | sleep | relax(e.g: mindfulness) | routine(e.g.: laundry, cleaning) | goals | hobby | other",
           "location": "",      // optional
           "details":  ""       // optional
-        }
+        }}
       ]
     where each block is an activity.
     Scheduling Rules:
@@ -152,6 +146,9 @@ Return a JSONObject.
       • Every activity must have a start time, end time, name, and category. For name and category if unclear, use "open" and "other"
     2. Sleep Block
       • There should be only one block with the name "sleep".
+      • If the user has multiple sleep timings in a day, call it other sleep terms for e.g. "Afternoon Sleep/Nap"
+    3. Wake Up Block
+      • There should always be one and only one Wake Up block which demonstrates start of the day.
       • If the user has multiple sleep timings in a day, call it other sleep terms for e.g. "Afternoon Sleep/Nap"
     3. User's Aspirations and Goals 
       • Based on the discussion with user about their aspirations, desired changes and goals, prepare the schedule that move the user from their current routine toward their aspirations.
@@ -206,14 +203,14 @@ Rules
 
 Example structure (placeholders only):
 
-{
+{{
   "HIGHEST": [
-    { "suggestion": "", "reason": "", "targets": "" }
+    {{ "suggestion": "", "reason": "", "targets": "" }}
   ],
   "HIGH": [
-    { "suggestion": "", "reason": "", "targets": "" }
+    {{ "suggestion": "", "reason": "", "targets": "" }}
   ]
-}
+}}
     '''
 ),
 
@@ -259,26 +256,33 @@ Scheduling rules
 8. Maintain Chronological order inside each day after all inserts/merges.
 
 Output schema  (return JSON only)
-{
+{{
   "days": [
-    {
+    {{
       "day": "Monday",
       "blocks": [
-        {
+        {{
           "start": "HH:MM",
           "end":   "HH:MM",
           "name":  "",
           "category": "work | workout | sleep | relax(e.g: mindfulness) | routine(e.g.: laundry, cleaning) | goals | hobby | other",
           "location": "",      // optional
           "details":  ""       // optional
-        }
+        }}
       ]
-    }
+    }}
     /* Tuesday … Sunday */
   ]
-}
+}}
 
 Return JSON only** exactly matching the schema—no commentary.
 '''
+    ),
+    "stage3_test":(
+        '''
+          You already have this information about user, so don't ask the questions which are not required.
+          they are a software engineer on a hybrid schedule—WFH on Mondays and Fridays, in‑office Tuesday through Thursday. On home days they start work around 10‑10 : 30 a.m. and may go until 7 p.m.; office days run about 10 a.m.–5 p.m. followed by a 5–7 p.m. gym session. They wake around 9 : 30 a.m., have meals at roughly 1 p.m. and 8–9 p.m., and head to bed at midnight but scroll their phone until about 2 a.m., with evenings otherwise spent on friends, chores, or catching up on work.
+        '''
     )
+
 }

@@ -65,8 +65,11 @@ async def entrypoint(ctx: agents.JobContext):
             if(stage == 1):
                 def participant_attributes_changed_sync(attributes, participant):
                     asyncio.create_task(agent.on_participant_attribute_changed(attributes, participant))
+                def on_room_disconnected_sync(reason):
+                    asyncio.create_task(agent.on_room_disconnected(reason))
                 agent.set_room(ctx.room)
                 ctx.room.on("participant_attributes_changed", participant_attributes_changed_sync)
+                ctx.room.on("disconnected", on_room_disconnected_sync)
                 feeling = metadataJson['feelings']
                 date = metadataJson['date']
                 if feeling:
