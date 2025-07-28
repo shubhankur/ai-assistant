@@ -10,6 +10,16 @@ import { LoadingView } from '@/components/LoadingView';
 import { Button } from '@/components/ui/button';
 import { DayPlan } from '../day/page';
 
+export interface Metadata {
+  stage:string,
+  feelings:string | null,
+  day: number,
+  date: string,
+  time: string,
+  timezone: string,
+  locale : string
+}
+
 function SessionContent() {
   const {state, agentAttributes, audioTrack} = useVoiceAssistant();
   console.log("state: ", state)
@@ -50,11 +60,11 @@ function SessionContent() {
   useEffect(() => {
     if (stage === 5) {
       if (todayPlan) {
-        const param = encodeURIComponent(JSON.stringify(todayPlan));
-        window.location.assign(`/day?plan=${param}`);
+        sessionStorage.setItem('currentPlan', JSON.stringify(todayPlan));
+        window.location.assign('/day');
       } else if (tomorrowPlan) {
-        const param = encodeURIComponent(JSON.stringify(tomorrowPlan));
-        window.location.assign(`/day?plan=${param}`);
+        sessionStorage.setItem('currentPlan', JSON.stringify(tomorrowPlan));
+        window.location.assign('/day');
       }
     }
   }, [stage, todayPlan, tomorrowPlan]);
@@ -73,7 +83,7 @@ function SessionContent() {
         </Button>
       </div>
 
-      {stage == 2 && 
+      {/* {stage == 2 && 
         (
           <div>
             <Button variant="outline" className='bg-blue-600'
@@ -82,7 +92,7 @@ function SessionContent() {
             </Button>
           </div>
         )
-      }
+      } */}
       
       {stage < 5 &&
         (
@@ -93,7 +103,7 @@ function SessionContent() {
 
       {stage == 5 && (
         (!todayPlan && !tomorrowPlan) ? (
-          <LoadingView messages={["Analyzing Current Routine, Analyzing Aspirations, Preparing your plan, Loading your schedule..."]} />
+          <LoadingView messages={["Analyzing Current Routine", "Analyzing Aspirations", "Preparing your plan", "Loading your schedule..."]} />
         ) : null
       )}
 
@@ -122,13 +132,21 @@ function AgentVisualizer() {
 }
 
 export default function SessionPage() {
-  const [metadata, setMetadata] = useState<JSON>();
+  const [metadata, setMetadata] = useState<Metadata>();
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const date = new Date().toString(); // Fri Jul 25 2025 00:57:54 GMT-0400 (Eastern Daylight Time)'
-      const metadataJson = `{"stage" : 1,"feelings":"${params.get('feelings')}","date":"${date}"}`
-      setMetadata(JSON.parse(metadataJson));
+      const params: URLSearchParams = new URLSearchParams(window.location.search);
+      const d = new Date();
+      const metadata_created : Metadata = {
+        stage:"1",
+        feelings: params.get('feelings'),
+        date : d.toLocaleDateString(),
+        day : d.getDay(),
+        time : d.toTimeString(),
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        locale: Intl.DateTimeFormat().resolvedOptions().locale
+      }
+      setMetadata(metadata_created);
     }
   }, []);
   if(!metadata){

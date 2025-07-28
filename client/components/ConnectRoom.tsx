@@ -1,4 +1,5 @@
 'use client'
+import { Metadata } from '@/app/session/page';
 import { LiveKitRoom, RoomAudioRenderer } from '@livekit/components-react';
 import { ReactNode, useEffect, useState } from 'react';
 
@@ -7,7 +8,7 @@ export default function ConnectRoom({
   metadata,
 }: {
   children: ReactNode;
-  metadata: JSON;
+  metadata: JSON | Metadata
 }) {
   const [token, setToken] = useState<string>();
   const [serverUrl, setServerUrl] = useState<string>();

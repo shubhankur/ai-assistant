@@ -28,7 +28,7 @@ export function LoadingView(messageList: MessageList) {
         // advance to the next line every 1.8 s, stop on the last
         const id = setInterval(() => {
             setIdx((n) => (n < messageList.messages.length - 1 ? n + 1 : n));
-        }, 2000);
+        }, 1500);
         return () => clearInterval(id);
     }, []);
 

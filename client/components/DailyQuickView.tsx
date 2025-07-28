@@ -11,12 +11,15 @@ import { DisconnectButton, VoiceAssistantControlBar } from "@livekit/components-
 const catColor: Record<string, string> = {
   "work": "border-blue-500",
   "workout": "border-red-500",
-  "sleep": "border-cyan-500",
-  "relax": "border-purple-500",
+  "wakeup": "border-amber-400",
+  "sleep": "border-sky-400",
+  "relax": "border-indigo-400",
   "routine": "border-emerald-500",
-  "goals": "border-amber-500",
-  "hobby": "border-pink-500",
-  "other": "border-gray-500"
+  "goals": "border-orange-500",
+  "hobby": "border-pink-400",
+  "other": "border-gray-500",
+  // alias – meals share the routine palette
+  "meals": "border-emerald-500"
 };
 
 const tz = "America/New_York";
@@ -28,8 +31,6 @@ const to12h = (t: string) => {
   const fmt = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: tz });
   return next ? fmt + " (+1)" : fmt;
 };
-
-
 
 
 export function DailyQuickView (plan:DayPlan) {

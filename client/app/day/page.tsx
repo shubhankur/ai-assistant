@@ -8,6 +8,7 @@ import { DailyQuickView } from "@/components/DailyQuickView";   // assumes Daily
 export type Category =
   | "work"
   | "workout"
+  | "meals"
   | "sleep"
   | "relax"
   | "routine"
@@ -55,6 +56,20 @@ export default function DailyPage() {
 
   useEffect(() => {
     if (typeof window !== "undefined") {
+      // Try to get plan from session storage first
+      const storedPlan = sessionStorage.getItem('currentPlan');
+      if (storedPlan) {
+        try {
+          const parsed = JSON.parse(storedPlan);
+          setPlan(parsed);
+          return;
+        } catch (e) {
+          console.error('Failed to parse stored plan:', e);
+          sessionStorage.removeItem('currentPlan');
+        }
+      }
+      
+      // Fallback to URL parameter for backward compatibility
       const params = new URLSearchParams(window.location.search);
       const planParam = params.get("plan");
       if (planParam) {

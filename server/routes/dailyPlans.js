@@ -3,7 +3,7 @@ const DailyPlan = require('../models/dailyPlan');
 
 const router = express.Router();
 
-router.post('/', async (req, res) => {
+router.post('/save', async (req, res) => {
   try {
     const doc = await DailyPlan.create(req.body);
     res.status(201).json(doc);

@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 require('./db');
@@ -9,8 +10,11 @@ const desiredHabitChanges = require('./routes/desiredHabitChanges');
 const ongoingChanges = require('./routes/ongoingChanges');
 const weeklyRoutines = require('./routes/weeklyRoutines');
 
+const cors = require('cors'); 
+
 const app = express();
 app.use(bodyParser.json());
+
 
 app.use('/users', users);
 app.use('/dailyPlans', dailyPlans);
@@ -19,7 +23,8 @@ app.use('/desiredHabitChanges', desiredHabitChanges);
 app.use('/ongoingChanges', ongoingChanges);
 app.use('/weeklyRoutines', weeklyRoutines);
 
-const PORT = 5000;
+
+const PORT = 5005;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
