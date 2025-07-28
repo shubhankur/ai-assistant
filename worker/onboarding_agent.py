@@ -338,11 +338,11 @@ class OnboardingAgent(Agent):
                     print("llm_node stage3")
                     response = ""
                     start_time = time.time()
-                    validation_signal = "SATISFIED"
+                    validation_signal = "information collected"
                     async for chunk in stream:
                         if(chunk.delta and chunk.delta.content):
                             response += chunk.delta.content
-                            if(response.upper() == validation_signal):
+                            if(len(response) > 3 and (validation_signal.startswith(response) or response.upper() == validation_signal)):
                                 print("stage 3 satisfied")
                                 #update to stage4
                                 self.stage3_chat_ctx = chat_ctx
@@ -360,7 +360,7 @@ class OnboardingAgent(Agent):
                     async for chunk in stream:
                         if(chunk.delta and chunk.delta.content):
                             response += chunk.delta.content
-                            if(response.upper() == validation_signal):
+                            if(len(response) > 3 and (validation_signal.startswith(response) or response.upper() == validation_signal)):
                                 print("stage 4 satisfied")
                                 await self.set_stage(5)
                                 #this causes client to move out of the session page, so room will get disconnected
@@ -475,6 +475,8 @@ class OnboardingAgent(Agent):
     
     async def update_stage(self, stage_num:int, chat_ctx: llm.ChatContext):
         print("Moving to stage ", stage_num)
+        # if(stage_num == 3):
+        #     self.session.say("Lets start with your current routine!")
         await self.set_stage(stage_num)
         prompt_key = "stage" + str(stage_num)
         new_prompt = ONBOARDING_PROMPTS[prompt_key]

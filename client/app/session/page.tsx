@@ -25,7 +25,7 @@ function SessionContent() {
   console.log("state: ", state)
   const roomCtx = useRoomContext();
   console.log("room local participant: ", roomCtx.localParticipant.identity)
-  const stage = Number(agentAttributes?.stage ?? 1);
+  const stage = Number(agentAttributes?.stage ?? 5);
 
   const {textStreams : todayPlanStream} = useTextStream("today_plan");
   const {textStreams : tomorrowPlanStream} = useTextStream("tomorrow_plan");
@@ -70,43 +70,42 @@ function SessionContent() {
   }, [stage, todayPlan, tomorrowPlan]);
 
   return (
-    <div className="flex flex-col items-center bg-black">
-      {/* ToDo; Get device volume when media is being played and use that*/}
-      <VolumeWarning volume={1} />
-      <AgentVisualizer />
-      <div className='flex justify-center'>
-        <VoiceControlBar/>
-        <Button variant="outline" className='bg-blue-600 ml-2'
-          onClick={() => updateStage(7)}
-        >
-          Skip
-        </Button>
+    <div>
+      {stage < 5 && (
+      <div className="flex flex-col items-center bg-black">
+        {/* ToDo; Get device volume when media is being played and use that*/}
+        <VolumeWarning volume={1} />
+        <AgentVisualizer />
+        <div className='flex justify-center'>
+          <VoiceControlBar/>
+          <Button variant="outline" className='bg-blue-600 ml-2'
+            onClick={() => updateStage(7)}
+          >
+            Skip
+          </Button>
+        </div>
+
+        {/* {stage == 2 && 
+          (
+            <div>
+              <Button variant="outline" className='bg-blue-600'
+                onClick={() => updateStage(3)}>
+                  I have 5 uninterrupted minutes
+              </Button>
+            </div>
+          )
+        } */}
+        <div className="flex-1 w-full">
+          <TranscriptionView />
+        </div>
       </div>
-
-      {/* {stage == 2 && 
-        (
-          <div>
-            <Button variant="outline" className='bg-blue-600'
-              onClick={() => updateStage(3)}>
-                I have 5 uninterrupted minutes
-            </Button>
-          </div>
-        )
-      } */}
-      
-      {stage < 5 &&
-        (
-          <div className="flex-1 w-full">
-            <TranscriptionView />
-          </div>
-        )}
-
-      {stage == 5 && (
-        (!todayPlan && !tomorrowPlan) ? (
-          <LoadingView messages={["Analyzing Current Routine", "Analyzing Aspirations", "Preparing your plan", "Loading your schedule..."]} />
-        ) : null
       )}
-
+       {stage == 5 && !todayPlan && !tomorrowPlan && (
+            <div className='bg-black flex items-center justify-center min-h-screen'>
+              <LoadingView messages={["Analyzing Current Routine...", "Analyzing Aspirations...", "Adding Lifestyle Suggestions...", "Preparing your plan...", "Validating the plan...", "Loading your schedule...", "Almost there..."]} />
+            </div>
+          )
+        }
     </div>
   )
 }

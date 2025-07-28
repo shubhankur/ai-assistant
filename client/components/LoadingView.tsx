@@ -7,12 +7,12 @@ const LoadingRing = () => (
       {/** Pulsating outline */}
       <motion.div
         className="absolute inset-0 rounded-full border-4 border-primary"
-        animate={{ scale: [0.9, 1.05, 0.9], opacity: [0.6, 1, 0.6] }}
-        transition={{ duration: 2.8, ease: "easeInOut", repeat: Infinity }}
+        animate={{ scale: [2.5, 4 , 2.5], opacity: [0.6, 1, 0.6] }}
+        transition={{ duration: 10, ease: "easeInOut", repeat: Infinity }}
       />
   
       <span className="absolute text-sm font-medium text-primary-foreground text-center px-2 pointer-events-none">
-        take a deep breath
+        take a few deep breaths
       </span>
     </div>
   );
@@ -28,7 +28,7 @@ export function LoadingView(messageList: MessageList) {
         // advance to the next line every 1.8 s, stop on the last
         const id = setInterval(() => {
             setIdx((n) => (n < messageList.messages.length - 1 ? n + 1 : n));
-        }, 1500);
+        }, 3000);
         return () => clearInterval(id);
     }, []);
 
