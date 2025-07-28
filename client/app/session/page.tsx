@@ -25,7 +25,7 @@ function SessionContent() {
   console.log("state: ", state)
   const roomCtx = useRoomContext();
   console.log("room local participant: ", roomCtx.localParticipant.identity)
-  const stage = Number(agentAttributes?.stage ?? 5);
+  const stage = Number(agentAttributes?.stage ?? 1);
 
   const {textStreams : todayPlanStream} = useTextStream("today_plan");
   const {textStreams : tomorrowPlanStream} = useTextStream("tomorrow_plan");
