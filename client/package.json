@@ -13,6 +13,7 @@
     "@livekit/components-react": "^2.9.10",
     "@livekit/components-styles": "^1.1.6",
     "@radix-ui/react-slot": "^1.2.3",
+    "@react-oauth/google": "^0.10.0",
     "@types/vara": "^1.1.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -27,8 +28,7 @@
     "react-type-animation": "^3.2.0",
     "tailwind-merge": "^3.3.1",
     "uuid": "^11.1.0",
-    "vara": "^1.4.1",
-    "@react-oauth/google": "^0.10.0"
+    "vara": "^1.4.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

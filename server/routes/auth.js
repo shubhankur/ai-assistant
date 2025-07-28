@@ -1,19 +1,12 @@
 const express = require('express');
 const { OAuth2Client } = require('google-auth-library');
-const nodemailer = require('nodemailer');
 const User = require('../models/user');
+const sgMail = require('@sendgrid/mail')
 
 const router = express.Router();
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: Number(process.env.SMTP_PORT) || 587,
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
+
+sgMail.setApiKey(process.env.SENDGRID_API_KEY)
 
 router.post('/login', async (req, res) => {
   try {
@@ -32,16 +25,21 @@ router.post('/login', async (req, res) => {
     const name = email.split('@')[0];
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     user = await User.create({ email, password, name, verificationCode: code });
-    try {
-      await transporter.sendMail({
-        from: process.env.SMTP_FROM || process.env.SMTP_USER,
-        to: email,
-        subject: 'Verify your account',
-        text: `Your verification code is ${code}`,
-      });
-    } catch (e) {
-      console.error('Mail error', e);
+    const msg = {
+      to: email, // Change to your recipient
+      from: process.env.SMTP_USER, // Change to your verified sender
+      subject: 'Verify your account',
+      text: `Your verification code is ${code}`,
     }
+
+    sgMail
+      .send(msg)
+      .then(() => {
+        console.log('Email sent')
+      })
+      .catch((error) => {
+        console.error(error)
+      })
     res.json({ message: 'verification_required' });
   } catch (err) {
     res.status(400).json({ error: err.message });

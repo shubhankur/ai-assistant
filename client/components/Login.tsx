@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { GoogleLogin } from '@react-oauth/google';
+import { GoogleLogin, GoogleOAuthProvider } from '@react-oauth/google';
 
 const passwordRegex = /^(?=[A-Za-z])(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*\-_])[A-Za-z\d!@#$%^&*\-_]{10,}$/;
 
@@ -11,7 +11,7 @@ export function Login() {
     const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       if (!passwordRegex.test(password)) {
-        setError("Password must be 10+ chars, start with a letter and contain upper, lower, number and special");
+        setError("Password must be 10+ chars, start with a letter and contain atleast one uppercase, lowercase, number and a special character");
         return;
       }
       const res = await fetch("http://localhost:5005/auth/login", {
@@ -102,30 +102,35 @@ export function Login() {
             <span className="bg-black px-2 text-gray-300">or</span>
           </div>
         </div>
-  
-        {/* Google auth */}
-        <div className="flex justify-center">
-          <GoogleLogin
-            onSuccess={async (cred) => {
-              const token = cred.credential;
-              if (!token) return;
-              const res = await fetch('http://localhost:5005/auth/google', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token }),
-                credentials: 'include',
-              });
-              if (res.ok) {
-                window.location.assign('/session');
-              } else {
-                setError('Google auth failed');
-              }
-            }}
-            onError={() => setError('Google auth failed')}
-            shape="pill"
-            width="250"
-          />
-        </div>
+        <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ''}>
+            {/* Google auth */}
+            <div className="flex justify-center">
+            <GoogleLogin
+                text="continue_with"
+                onSuccess={async (cred) => {
+                    const token = cred.credential;
+                    if (!token) return;
+                    const res = await fetch('http://localhost:5005/auth/google', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ token }),
+                        credentials: 'include',
+                    });
+                    if (res.ok) {
+                        window.location.assign('/session');
+                    } else {
+                        setError('Google auth failed');
+                    }
+                }}
+                onError={() => setError('Google auth failed')}
+                shape="pill"
+                width="250"
+                useOneTap={true}
+                theme="filled_blue"
+                type="standard"
+            />
+            </div>
+        </GoogleOAuthProvider>
       </div>
     );
   }
