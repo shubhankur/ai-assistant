@@ -3,71 +3,27 @@ import os
 import re
 import time
 import tiktoken
+import aiohttp
 from livekit.plugins.openai import llm
 from typing import Optional
 import asyncio
 from livekit.agents import llm, Agent, AgentSession, ModelSettings
-from livekit.rtc import Room, DisconnectReason
+from livekit.rtc import Room, DisconnectReason, RemoteParticipant
 from livekit.agents.llm import ChatContext, FunctionTool, RawFunctionTool
 from livekit.agents.types import APIConnectOptions
 from livekit.agents.llm.tool_context import StopResponse
 from livekit.rtc.participant import Participant
 from collections.abc import AsyncGenerator
 from livekit.agents.types import NOT_GIVEN
-from datetime import datetime
+from datetime import datetime, timedelta
 from dotenv import load_dotenv
+from babel.dates   import parse_date, format_date
+from onboarding_agent_helper import save_to_server
+
 
 from onboarding_prompts import ONBOARDING_PROMPTS
 load_dotenv('.env', override=True)
 
-server_url = os.getenv('SERVER_URL')
-
-def parse_js_date_string(date_str):
-    # Example: "Fri Jul 25 2025 00:57:54 GMT-0400 (Eastern Daylight Time)"
-    match = re.match(
-        r"(\w{3}) (\w{3} \d{2} \d{4}) (\d{2}:\d{2}:\d{2}) (GMT[+-]\d{4})",
-        date_str
-    )
-    if match:
-        day, date, time, gmt = match.groups()
-        timezone = gmt  # Only GMT value
-        return day, date, time, timezone
-    else:
-        return None, None, None, None
-
-def count_total_tokens_from_chat_ctx(
-    chat_ctx: llm.ChatContext,
-    prompt: Optional[str] = None,
-    model: str = "gpt-3.5-turbo"
-) -> int:
-    """
-    Count total tokens used by ChatCtx history + optional new prompt.
-
-    Args:
-        chat_ctx: LiveKit llm.ChatCtx object containing chat history
-        prompt: Optional new prompt string to include in the count
-        model: OpenAI model name for token encoding (default: gpt-3.5-turbo)
-
-    Returns:
-        int: Total number of tokens
-    """
-    try:
-        enc = tiktoken.encoding_for_model(model)
-
-        total_tokens = 0
-        for message in chat_ctx.to_provider_format(format="openai"):
-            total_tokens += 4  # message overhead
-            total_tokens += len(enc.encode(message.get("content", "")))
-
-        if prompt:
-            total_tokens += 4  # new prompt message overhead
-            total_tokens += len(enc.encode(prompt))
-
-        total_tokens += 1  # assistant reply primer token
-        return total_tokens
-    except Exception as e:
-        print("Error counting tokens ", e.__cause__)
-        return 0
 
 class OnboardingAgent(Agent):
     def __init__(self, session: AgentSession):
@@ -76,14 +32,17 @@ class OnboardingAgent(Agent):
         self._room = None
         self.stage = 1
         self.user_feeling = None
+        self.user_id = "507f1f77bcf86cd799439011"
         self.stage3_chat_ctx = None
         self.stage3_task = None
         self.stage2_turn = 0
         self.today = ""
         self.tomorrow = ""
-        self.date = ""
+        self.tomorrow_date = ""
+        self.today_date = ""
         self.time = ""
         self.timezone = ""
+        self.locale = ""
         self.stage3_response_json = None
         self.today_plan_json = None
         self.tomorrow_plan_json = None
@@ -126,57 +85,171 @@ class OnboardingAgent(Agent):
                         print("Error: stage3_response was not a valid json")
                     else:
                         self.stage3_response_json = stage3_response_json
-                                   
+                        print("stage3 response generated")
+                        stage3_response_json["userid"] = self.user_id
+                        stage3_response_json["timezone"] = self.timezone
+                        # Save current routine to server
+                        await save_to_server("currentRoutines", stage3_response_json)
                 except Exception as exc:
                     print(f"Stage 3 failed: {exc}")
                     return
                 print("Stage 3 response ready")
             if(self.today_plan_json is None):
-                today_plan_json = await self.get_daily_plan(self.today, chat_ctx)
-                if(today_plan_json is None):
-                                    #ToDo: Maybe ask to regenerate
-                    print("Error: today_plan_response was not a valid json")
-                else:
-                    self.today_plan_json = today_plan_json
-                                    #ToDo: Save to Mongo
+                try:
+                    today_plan_json = await self.get_daily_plan(self.today, chat_ctx)
+                    if(today_plan_json is None):
+                                        #ToDo: Maybe ask to regenerate
+                        print("Error: today_plan_response was not a valid json")
+                    else:
+                        self.today_plan_json = today_plan_json
+                        print("today_plan response generated")
+                        today_plan_json["userid"] = self.user_id
+                        today_plan_json["date"] = self.today_date
+                        today_plan_json["week_day"] = self.today
+                        today_plan_json["timezone"] = self.timezone
+                        today_plan_json["locale"] = self.locale
+                        today_plan_json["version"] = 0
+                        # Save today_plan_json to server
+                        await save_to_server("dailyPlans/save", today_plan_json)
+                except Exception as e:
+                    print(f"Failed to get today's plan: {str(e)}")
             if(self.tomorrow_plan_json is None):
-                tomorrow_plan_json = await self.get_daily_plan(self.tomorrow, chat_ctx)
-                if(tomorrow_plan_json is None):
-                                    #ToDo: Maybe ask to regenerate
-                    print("Error: tomorrow_plan_response was not a valid json")
-                else:
-                    self.tomorrow_plan_json = tomorrow_plan_json
-                                    #ToDo: Save to Mongo
+                try:
+                    tomorrow_plan_json = await self.get_daily_plan(self.tomorrow, chat_ctx)
+                    if(tomorrow_plan_json is None):
+                                        #ToDo: Maybe ask to regenerate
+                        print("Error: today_plan_response was not a valid json")
+                    else:
+                        self.tomorrow_plan_json = tomorrow_plan_json
+                        print("today_plan response generated")
+                        tomorrow_plan_json["userid"] = self.user_id
+                        tomorrow_plan_json["date"] = self.tomorrow_date
+                        tomorrow_plan_json["week_day"] = self.tomorrow
+                        tomorrow_plan_json["timezone"] = self.timezone
+                        tomorrow_plan_json["locale"] = self.locale
+                        tomorrow_plan_json["version"] = 0
+                        # Save tomorrow_plan_json to server
+                        await save_to_server("dailyPlans/save", tomorrow_plan_json)
+                except Exception as e:
+                    print(f"Failed to get today's plan: {str(e)}")
+            await self.handle_post_stage4()
+            await self._room.disconnect()
+
+    async def on_participant_disconnected(self, participant: RemoteParticipant):
+        print("WARN: Participant Disconnected ")
+        chat_ctx = self.chat_ctx
+        if(self.stage == 5):
+            if(self.stage3_response_json is None):
+                prompt = ONBOARDING_PROMPTS["stage3_output"]
+                try:
+                    stage3_response = await self._llm_complete(prompt, self.stage3_chat_ctx)
+                    stage3_response_json = self._parse_json(stage3_response)
+                    if(stage3_response_json is None):
+                        print("Error: stage3_response was not a valid json")
+                    else:
+                        self.stage3_response_json = stage3_response_json
+                        print("stage3 response generated")
+                        stage3_response_json["userid"] = self.user_id
+                        stage3_response_json["timezone"] = self.timezone
+                        # Save current routine to server
+                        await save_to_server("currentRoutines", stage3_response_json)
+                except Exception as exc:
+                    print(f"Stage 3 failed: {exc}")
+                    return
+                print("Stage 3 response ready")
+            if(self.today_plan_json is None):
+                try:
+                    today_plan_json = await self.get_daily_plan(self.today, chat_ctx)
+                    if(today_plan_json is None):
+                                        #ToDo: Maybe ask to regenerate
+                        print("Error: today_plan_response was not a valid json")
+                    else:
+                        self.today_plan_json = today_plan_json
+                        print("today_plan response generated")
+                        today_plan_json["userid"] = self.user_id
+                        today_plan_json["date"] = self.today_date
+                        today_plan_json["week_day"] = self.today
+                        today_plan_json["timezone"] = self.timezone
+                        today_plan_json["locale"] = self.locale
+                        today_plan_json["version"] = 0
+                        # Save today_plan_json to server
+                        await save_to_server("dailyPlans/save", today_plan_json)
+                except Exception as e:
+                    print(f"Failed to get today's plan: {str(e)}")
+            if(self.tomorrow_plan_json is None):
+                try:
+                    tomorrow_plan_json = await self.get_daily_plan(self.tomorrow, chat_ctx)
+                    if(tomorrow_plan_json is None):
+                                        #ToDo: Maybe ask to regenerate
+                        print("Error: today_plan_response was not a valid json")
+                    else:
+                        self.tomorrow_plan_json = tomorrow_plan_json
+                        print("today_plan response generated")
+                        tomorrow_plan_json["userid"] = self.user_id
+                        tomorrow_plan_json["date"] = self.tomorrow_date
+                        tomorrow_plan_json["week_day"] = self.tomorrow
+                        tomorrow_plan_json["timezone"] = self.timezone
+                        tomorrow_plan_json["locale"] = self.locale
+                        tomorrow_plan_json["version"] = 0
+                        # Save tomorrow_plan_json to server
+                        await save_to_server("dailyPlans/save", tomorrow_plan_json)
+                except Exception as e:
+                    print(f"Failed to get today's plan: {str(e)}")
             await self.handle_post_stage4()
             await self._room.disconnect()
 
     
-    async def start(self, feeling: str, date: str) -> None:
-        self.user_feeling = feeling
-        # Parse date string (Fri Jul 25 2025 00:57:54 GMT-0400 (Eastern Daylight Time)) into day, date, time and timezone
-        day, date_str, time, timezone = parse_js_date_string(date)
-        self.today = day
-        self.date = date_str
-        self.time = time
-        self.timezone = timezone
-        # Calculate tomorrow's day using only the day string
-        days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-        if day in days:
-            idx = days.index(day)
-            self.tomorrow = days[(idx + 1) % 7]
-        else:
-            self.tomorrow = ""
-        await self.set_stage(2)
-        new_prompt = ONBOARDING_PROMPTS["stage2"].format(user_feeling=feeling)
-        self.greeting_speech = self._session.generate_reply(instructions=new_prompt, allow_interruptions=True)
+    async def start(self, metadata_json : json) -> None:
+        self.user_feeling = metadata_json["feelings"]
+        try:
+            # day as integer
+            day = int(metadata_json["day"])
+            if day < 0 or day > 6:
+                raise ValueError("Day must be between 0 and 6")
+            
+            days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+            self.today = days[day] 
+            self.tomorrow = days[(day + 1) % 7]
+            
+            if "timezone" not in metadata_json:
+                raise KeyError("Timezone missing from metadata")
+            self.timezone = metadata_json["timezone"]
+
+            # parse date for today and tomorrow
+            if "locale" not in metadata_json:
+                raise KeyError("Locale missing from metadata")
+            loc:str = metadata_json["locale"]
+            self.locale = loc
+            loc = loc.replace("-", "_")
+            
+            try:
+                today_date = parse_date(metadata_json["date"], locale=loc)
+                tomorrow_date = today_date + timedelta(days=1)
+                self.today_date = format_date(today_date, format="short", locale=loc)
+                self.tomorrow_date = format_date(tomorrow_date, format="short", locale=loc)
+            except ValueError as e:
+                raise ValueError(f"Error parsing dates: {str(e)}")
+
+            # received as '19:10:16 GMT-0400 (Eastern Daylight Time)'
+            if "time" not in metadata_json:
+                raise KeyError("Time missing from metadata")
+            time : str = metadata_json["time"]
+            try:
+                self.time = time.split(" ")[0]
+            except IndexError:
+                raise ValueError("Invalid time format")
+                
+        except Exception as e:
+            print(f"Error processing metadata: {str(e)}")
+            raise
+        
+        await self.update_stage(3, ChatContext.empty())
+        # new_prompt = ONBOARDING_PROMPTS["stage2"].format(user_feeling=self.user_feeling)
+        # self.greeting_speech = self._session.generate_reply(instructions=new_prompt)
         #user responds if they want to continue
 
     async def _llm_complete(self, system_prompt: str, chat_ctx: llm.ChatContext) -> str:
-        token_count = count_total_tokens_from_chat_ctx(chat_ctx, system_prompt)
-        if(token_count > 2000):
-            print("WARNING: TOKEN COUNT greater than 2000! Cannot process further.")
-            return ""
-        else:
+        try:
             chat_ctx.add_message(role="system", content=[system_prompt])
             llm_conn_options = APIConnectOptions(
                 timeout=120.0,          # <= raise per-request limit
@@ -191,6 +264,8 @@ class OnboardingAgent(Agent):
             await stream.aclose()
             #ToDO: Verify this response is not added to the context
             return "".join(parts).strip()
+        except Exception as e:
+            print("ERROR in LLM Complete ", str(e.__cause__))
 
     def _parse_json(self, text: str) -> dict | None:
         """Attempt to parse a JSON object from the given text."""
@@ -212,14 +287,6 @@ class OnboardingAgent(Agent):
             if(self.stage2_turn == 1):
                 system_prompt = ONBOARDING_PROMPTS["stage2_is_user_continue"]
                 await self.add_system_message(turn_ctx, system_prompt)
-        elif self.stage == 3:
-            pass
-        elif self.stage == 4:
-            pass
-        elif self.stage == 5:
-            pass
-        elif self.stage == 6:
-            pass
 
     async def llm_node(
             self,
@@ -271,20 +338,20 @@ class OnboardingAgent(Agent):
                     print("llm_node stage3")
                     response = ""
                     start_time = time.time()
-                    validation_signal = "SATISFIED"
+                    validation_signal = "information collected"
                     async for chunk in stream:
                         if(chunk.delta and chunk.delta.content):
                             response += chunk.delta.content
+                            if(len(response) > 3 and (validation_signal.startswith(response) or response.upper() == validation_signal)):
+                                print("stage 3 satisfied")
+                                #update to stage4
+                                self.stage3_chat_ctx = chat_ctx
+                                await self.update_stage(4, chat_ctx)
+                                raise StopResponse()
+                            elif(len(response) > 100):
+                                #do something
+                                pass
                         yield chunk
-                        if(response.upper() == validation_signal):
-                            print("stage 3 satisfied")
-                            #update to stage4
-                            await self.update_stage(4, chat_ctx)
-                            self.stage3_chat_ctx = chat_ctx
-                            raise StopResponse()
-                        elif(len(response) > 100):
-                            #do something
-                            pass
                 elif(self.stage == 4):
                     print("llm_node stage4")
                     response:str = ""
@@ -293,17 +360,16 @@ class OnboardingAgent(Agent):
                     async for chunk in stream:
                         if(chunk.delta and chunk.delta.content):
                             response += chunk.delta.content
+                            if(len(response) > 3 and (validation_signal.startswith(response) or response.upper() == validation_signal)):
+                                print("stage 4 satisfied")
+                                await self.set_stage(5)
+                                #this causes client to move out of the session page, so room will get disconnected
+                                await self.handle_stage4(chat_ctx)   
+                                raise StopResponse()
+                            elif(len(response) > 100):
+                                #do something
+                                pass
                         yield chunk
-                        if(response.upper() == validation_signal):
-                            print("stage 4 satisfied")
-                            await self.set_stage(5)
-                            #Generate plan for today or tomorrow, Send to Client And Save to Mongo
-                            await self.handle_stage4(chat_ctx) #this causes client to move out of the session page, so room will get disconnected   
-                            await self._room.disconnect()
-                            raise StopResponse()
-                        elif(len(response) > 100):
-                            #do something
-                            pass
 
     
     async def handle_stage4(self, chat_ctx):
@@ -314,11 +380,20 @@ class OnboardingAgent(Agent):
                 print("Error: today_plan_response was not a valid json")
             else:
                 self.today_plan_json = today_plan_json
+                #save to mongo
+                today_plan_json["userid"] = self.user_id
+                today_plan_json["date"] = self.today_date
+                today_plan_json["week_day"] = self.today
+                today_plan_json["timezone"] = self.timezone
+                today_plan_json["locale"] = self.locale
+                today_plan_json["version"] = 0
+                        # Save tomorrow_plan_json to server
+                await save_to_server("dailyPlans/save", today_plan_json)
+
                 await self._room.local_participant.send_text(
                                         topic="today_plan", 
                                         text=json.dumps(today_plan_json)
                                     )
-                                    #Save to Mongo
         else:
             tomorrow_plan_json = await self.get_daily_plan(self.tomorrow, chat_ctx)
             if(tomorrow_plan_json is None):
@@ -326,6 +401,14 @@ class OnboardingAgent(Agent):
                 print("Error: today_plan_response was not a valid json")
             else:
                 self.tomorrow_plan_json = tomorrow_plan_json
+                tomorrow_plan_json["userid"] = self.user_id
+                tomorrow_plan_json["date"] = self.tomorrow_date
+                tomorrow_plan_json["week_day"] = self.tomorrow
+                tomorrow_plan_json["timezone"] = self.timezone
+                tomorrow_plan_json["locale"] = self.locale
+                tomorrow_plan_json["version"] = 0
+                # Save tomorrow_plan_json to server
+                await save_to_server("dailyPlans/save", tomorrow_plan_json)
                 await self._room.local_participant.send_text(
                                         topic="tomorrow_plan", 
                                         text=json.dumps(tomorrow_plan_json)
@@ -342,7 +425,9 @@ class OnboardingAgent(Agent):
                 print("Error: Habit changes response is not a valid json")
             else:
                 self.stage4_output_json = stage4_output_json
-                                    #mongo store
+                stage4_output_json["userid"] = self.user_id
+                stage4_output_json["timezone"] = self.timezone
+                await save_to_server("desiredHabitChanges/save", stage4_output_json)
         if(self.habit_reformation_json is None):
                             #2. Generate Ongoing Reformation list, Save to Mongo
             habit_reformation_prompt = ONBOARDING_PROMPTS["habit_reformation_prompt"]
@@ -353,7 +438,9 @@ class OnboardingAgent(Agent):
                 print("Error: Habit Reformation response is not a valid json")
             else:
                 self.habit_reformation_json = habit_reformation_json
-                                    #mongo store
+                habit_reformation_json["userid"] = self.user_id
+                habit_reformation_json["timezone"] = self.timezone
+                await save_to_server("ongoingChanges/save", stage4_output_json)
         if(self.weekly_plan_json is None):
                             #3. Generate Weekly Plan, Save to Mongo
             weekly_plan_prompt = ONBOARDING_PROMPTS["weekly_plan"]
@@ -364,12 +451,16 @@ class OnboardingAgent(Agent):
                 print("Error: Weekly Plan Response is not a valid json")
             else:
                 self.weekly_plan_json = weekly_plan_json
-                                    #mongo store
-                                    #     
+                weekly_plan_json["userid"] = self.user_id
+                weekly_plan_json["timezone"] = self.timezone
+                weekly_plan_json["date"] = self.today_date
+                weekly_plan_json["locale"] = self.locale
+                await save_to_server("weeklyRoutines/save", weekly_plan_json)
+
     async def get_daily_plan(self, input_day : str, chat_ctx : llm.ChatContext) -> json:
         day_plan_prompt = ONBOARDING_PROMPTS["today_plan"].format(day=input_day)
         day_plan_res = await self._llm_complete(day_plan_prompt, chat_ctx)
-        print("Today Plan Res ", day_plan_res)
+        print( input_day + " Plan Res Received")
         day_plan_json = self._parse_json(day_plan_res)
         return day_plan_json      
 
@@ -384,6 +475,8 @@ class OnboardingAgent(Agent):
     
     async def update_stage(self, stage_num:int, chat_ctx: llm.ChatContext):
         print("Moving to stage ", stage_num)
+        # if(stage_num == 3):
+        #     self.session.say("Lets start with your current routine!")
         await self.set_stage(stage_num)
         prompt_key = "stage" + str(stage_num)
         new_prompt = ONBOARDING_PROMPTS[prompt_key]
@@ -402,3 +495,5 @@ class OnboardingAgent(Agent):
     
     def set_room(self, room : Room):
         self._room = room
+    def set_userid(self, userid : str):
+        self.user_id = userid

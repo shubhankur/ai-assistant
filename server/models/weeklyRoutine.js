@@ -13,6 +13,7 @@ const WeeklyRoutineSchema = new mongoose.Schema({
   userid: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   timezone: String,
   date: String,
+  locale: String,
   created_at: { type: Date, default: Date.now },
   Monday: [EventSchema],
   Tuesday: [EventSchema],

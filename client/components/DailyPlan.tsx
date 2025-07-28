@@ -6,8 +6,16 @@ import { stat } from "fs";
 
 /* ------------------------ Style Map ---------------------------------- */
 const catBg: Record<string, string> = {
-    "work": "bg-blue-600/80", "workout": "bg-red-600/80", "sleep": "bg-cyan-600/80", "relax": "bg-purple-600/80",
-    "routine": "bg-emerald-600/80", "goals": "bg-amber-600/80", "hobby": "bg-pink-600/80", "other": "bg-gray-600/60"
+    "work": "bg-blue-600/80",
+    "workout": "bg-red-600/80",
+    "wakeup": "bg-amber-400/80",
+    "sleep": "bg-sky-400/70",
+    "relax": "bg-indigo-500/70",
+    "routine": "bg-emerald-600/80",
+    "goals": "bg-orange-500/80",
+    "hobby": "bg-pink-500/70",
+    "other": "bg-gray-600/60",
+    "meals": "bg-emerald-600/80"
 };
 
 /* ------------------------ Time Helpers ------------------------------- */
@@ -38,6 +46,13 @@ interface BlockWithGroupId extends Block {
 export function DailyPlan(plan: DayPlan) {
     // ensure every block has groupId
     const [state, setState] = useState<BlockWithGroupId[]>();
+    const open_blk = {
+        start:"",
+        end:"",
+        groupId:"",
+        name: "Open",
+        category: "other"
+    }
     useEffect(() => {
         const received_blocks: Block[] = plan.blocks;
         const init: BlockWithGroupId[] = received_blocks.map(block => ({
@@ -76,7 +91,7 @@ export function DailyPlan(plan: DayPlan) {
     for (let t = start.getTime(); t < endTs; t += MS30) {
         const d = new Date(t);
         const idx = sorted.findIndex(b => hhmmToDate(b.start).getTime() <= t && hhmmToDate(b.end).getTime() > t);
-        const blk = idx >= 0 ? sorted[idx] : undefined; 
+        const blk = idx >= 0 ? sorted[idx] : open_blk; 
         slots.push({ 
             time: fmt(d), 
             block: blk, 
@@ -98,6 +113,8 @@ export function DailyPlan(plan: DayPlan) {
             });
         }
     }
+
+    console.log(slots)
 
     /* split helper */
     const splitBlock = (blocks: BlockWithGroupId[], idx: number, slotStart: Date): BlockWithGroupId[] => {
@@ -159,7 +176,7 @@ export function DailyPlan(plan: DayPlan) {
                 <div key={i} className="flex items-start gap-3">
                     <div className="w-20 text-xs text-gray-400 select-none">{s.time}</div>
                     {!s.block ? (
-                        <div className="flex-1 border border-dashed border-gray-600 rounded-md h-6" />
+                        <button className="flex-1 border border-dashed border-gray-600 rounded-md h-6 hover:ring-2 ring-white/40" />
                     ) : (
                         <div className="relative flex-1">
                             {editing === i ? (
@@ -167,7 +184,7 @@ export function DailyPlan(plan: DayPlan) {
                                     <textarea ref={inputRef} defaultValue={s.block.name} rows={2} className={`w-full rounded-md p-2 text-xs resize-none ${catBg[s.block.category]}`} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); saveOne(i); } }} />
                                     <div className="absolute right-0 top-1/2 translate-x-full -translate-y-1/2 flex flex-col gap-1">
                                         <button className="text-white p-1 bg-gray-700 rounded hover:bg-gray-600" title="Save this slot" onClick={() => saveOne(i)}><ArrowRight size={16} /></button>
-                                        <button className="text-white p-1 bg-gray-700 rounded hover:bg-gray-600" title="Save all slots of this block" onClick={() => saveAll(i)}><ArrowDown size={16} /></button>
+                                        {s.block.groupId && s.block.groupId!="" && <button className="text-white p-1 bg-gray-700 rounded hover:bg-gray-600" title="Save all slots of this block" onClick={() => saveAll(i)}><ArrowDown size={16} /></button>}
                                     </div>
                                 </>
                             ) : (

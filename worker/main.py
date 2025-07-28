@@ -67,15 +67,13 @@ async def entrypoint(ctx: agents.JobContext):
                     asyncio.create_task(agent.on_participant_attribute_changed(attributes, participant))
                 def on_room_disconnected_sync(reason):
                     asyncio.create_task(agent.on_room_disconnected(reason))
+                def on_participant_disconnected_sync(reason):
+                    asyncio.create_task(agent.on_participant_disconnected(reason))
                 agent.set_room(ctx.room)
                 ctx.room.on("participant_attributes_changed", participant_attributes_changed_sync)
                 ctx.room.on("disconnected", on_room_disconnected_sync)
-                feeling = metadataJson['feelings']
-                date = metadataJson['date']
-                if feeling:
-                    await agent.start(feeling, date)
-                else:
-                    raise Exception("Must send feeling when starting at stage 1")
+                ctx.room.on("participant_disconnected", on_participant_disconnected_sync)
+                await agent.start(metadataJson)
             elif(stage == 6):
                 new_agent = DayAgent(session)
                 session.update_agent(new_agent)

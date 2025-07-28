@@ -134,7 +134,7 @@ Return a JSONObject.
           "start": "HH:MM", // add '+1' if overflows to the next day, for example, "02:00+1"
           "end":   "HH:MM", // add '+1' if overflows to the next day, for example, "02:00+1"
           "name":  "",
-          "category": "work | workout | sleep | relax(e.g: mindfulness) | routine(e.g.: laundry, cleaning) | goals | hobby | other",
+          "category": "work | workout | sleep | meals | relax(e.g: mindfulness) | routine(e.g.: laundry, cleaning) | goals | hobby | other",
           "location": "",      // optional
           "details":  ""       // optional
         }}
@@ -143,9 +143,11 @@ Return a JSONObject.
     Scheduling Rules:
     1. Explicit Rules. 
       • If the user specifided a specific day/time for an activity, schedule it exactly there.
-      • Every activity must have a start time, end time, name, and category. For name and category if unclear, use "open" and "other"
+      • Every activity must have a start time, end time, name, and category. For name and category if unclear, use "open" and "other".
+      • Since we are starting the day with wake up in the morning. Consider midnight, that is 00:00 or 12AM as the next day. So return it with +1.
+      • Two activities cannot have the same start time or same end times.
     2. Sleep Block
-      • There should be only one block with the name "Sleep".
+      • There should be only one block with the name "Sleep" and it should be the last acitivity of the day.
       • If the user has multiple sleep timings in a day, call it other sleep terms for e.g. "Afternoon Sleep/Nap"
     3. Wake Up Block
       • There should always be one and only one Wake Up block which demonstrates start of the day.
@@ -265,7 +267,7 @@ Output schema  (return JSON only)
   "start": "HH:MM",
   "end":   "HH:MM",
   "name":  "",
-  "category": "work | workout | sleep | relax(e.g: mindfulness) | routine(e.g.: laundry, cleaning) | goals | hobby | other",
+  "category": "work | workout | sleep | meals | relax(e.g: mindfulness) | routine(e.g.: laundry, cleaning) | goals | hobby | other",
   "location": "",      // optional
   "details":  ""       // optional
 }}

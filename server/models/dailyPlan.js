@@ -5,6 +5,7 @@ const DailyPlanSchema = new mongoose.Schema({
   date: String,
   week_day: String,
   timezone: String,
+  locale: String,
   version: Number,
   created_at: { type: Date, default: Date.now },
   blocks: [

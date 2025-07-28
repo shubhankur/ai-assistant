@@ -10,12 +10,22 @@ import { LoadingView } from '@/components/LoadingView';
 import { Button } from '@/components/ui/button';
 import { DayPlan } from '../day/page';
 
+export interface Metadata {
+  stage:string,
+  feelings:string | null,
+  day: number,
+  date: string,
+  time: string,
+  timezone: string,
+  locale : string
+}
+
 function SessionContent() {
   const {state, agentAttributes, audioTrack} = useVoiceAssistant();
   console.log("state: ", state)
   const roomCtx = useRoomContext();
   console.log("room local participant: ", roomCtx.localParticipant.identity)
-  const stage = Number(agentAttributes?.stage ?? 1);
+  const stage = Number(agentAttributes?.stage ?? 5);
 
   const {textStreams : todayPlanStream} = useTextStream("today_plan");
   const {textStreams : tomorrowPlanStream} = useTextStream("tomorrow_plan");
@@ -50,53 +60,52 @@ function SessionContent() {
   useEffect(() => {
     if (stage === 5) {
       if (todayPlan) {
-        const param = encodeURIComponent(JSON.stringify(todayPlan));
-        window.location.assign(`/day?plan=${param}`);
+        sessionStorage.setItem('currentPlan', JSON.stringify(todayPlan));
+        window.location.assign('/day');
       } else if (tomorrowPlan) {
-        const param = encodeURIComponent(JSON.stringify(tomorrowPlan));
-        window.location.assign(`/day?plan=${param}`);
+        sessionStorage.setItem('currentPlan', JSON.stringify(tomorrowPlan));
+        window.location.assign('/day');
       }
     }
   }, [stage, todayPlan, tomorrowPlan]);
 
   return (
-    <div className="flex flex-col items-center bg-black">
-      {/* ToDo; Get device volume when media is being played and use that*/}
-      <VolumeWarning volume={1} />
-      <AgentVisualizer />
-      <div className='flex justify-center'>
-        <VoiceControlBar/>
-        <Button variant="outline" className='bg-blue-600 ml-2'
-          onClick={() => updateStage(7)}
-        >
-          Skip
-        </Button>
+    <div>
+      {stage < 5 && (
+      <div className="flex flex-col items-center bg-black">
+        {/* ToDo; Get device volume when media is being played and use that*/}
+        <VolumeWarning volume={1} />
+        <AgentVisualizer />
+        <div className='flex justify-center'>
+          <VoiceControlBar/>
+          <Button variant="outline" className='bg-blue-600 ml-2'
+            onClick={() => updateStage(7)}
+          >
+            Skip
+          </Button>
+        </div>
+
+        {/* {stage == 2 && 
+          (
+            <div>
+              <Button variant="outline" className='bg-blue-600'
+                onClick={() => updateStage(3)}>
+                  I have 5 uninterrupted minutes
+              </Button>
+            </div>
+          )
+        } */}
+        <div className="flex-1 w-full">
+          <TranscriptionView />
+        </div>
       </div>
-
-      {stage == 2 && 
-        (
-          <div>
-            <Button variant="outline" className='bg-blue-600'
-              onClick={() => updateStage(3)}>
-                I have 5 uninterrupted minutes
-            </Button>
-          </div>
-        )
-      }
-      
-      {stage < 5 &&
-        (
-          <div className="flex-1 w-full">
-            <TranscriptionView />
-          </div>
-        )}
-
-      {stage == 5 && (
-        (!todayPlan && !tomorrowPlan) ? (
-          <LoadingView messages={["Analyzing Current Routine, Analyzing Aspirations, Preparing your plan, Loading your schedule..."]} />
-        ) : null
       )}
-
+       {stage == 5 && !todayPlan && !tomorrowPlan && (
+            <div className='bg-black flex items-center justify-center min-h-screen'>
+              <LoadingView messages={["Analyzing Current Routine...", "Analyzing Aspirations...", "Adding Lifestyle Suggestions...", "Preparing your plan...", "Validating the plan...", "Loading your schedule...", "Almost there..."]} />
+            </div>
+          )
+        }
     </div>
   )
 }
@@ -122,13 +131,21 @@ function AgentVisualizer() {
 }
 
 export default function SessionPage() {
-  const [metadata, setMetadata] = useState<JSON>();
+  const [metadata, setMetadata] = useState<Metadata>();
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const date = new Date().toString(); // Fri Jul 25 2025 00:57:54 GMT-0400 (Eastern Daylight Time)'
-      const metadataJson = `{"stage" : 1,"feelings":"${params.get('feelings')}","date":"${date}"}`
-      setMetadata(JSON.parse(metadataJson));
+      const params: URLSearchParams = new URLSearchParams(window.location.search);
+      const d = new Date();
+      const metadata_created : Metadata = {
+        stage:"1",
+        feelings: params.get('feelings'),
+        date : d.toLocaleDateString(),
+        day : d.getDay(),
+        time : d.toTimeString(),
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        locale: Intl.DateTimeFormat().resolvedOptions().locale
+      }
+      setMetadata(metadata_created);
     }
   }, []);
   if(!metadata){
