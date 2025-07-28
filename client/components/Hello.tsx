@@ -10,7 +10,7 @@ export default function Hello() {
         '#hello-container',
         'https://cdn.jsdelivr.net/npm/vara@1.4.1/fonts/Satisfy/SatisfySL.json',
         [{ text: 'Hello', duration: 4000 }],
-        { fontSize: 80, strokeWidth: 1.5, color: '#0f172a', textAlign: 'center' }
+        { fontSize: 80, strokeWidth: 1.5, color: '#ffffff', textAlign: 'center' }
       );
     }
   }, []);

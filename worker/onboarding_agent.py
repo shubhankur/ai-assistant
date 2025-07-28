@@ -243,9 +243,9 @@ class OnboardingAgent(Agent):
             print(f"Error processing metadata: {str(e)}")
             raise
         
-        await self.set_stage(2)
-        new_prompt = ONBOARDING_PROMPTS["stage2"].format(user_feeling=self.user_feeling)
-        self.greeting_speech = self._session.generate_reply(instructions=new_prompt)
+        await self.update_stage(3, ChatContext.empty())
+        # new_prompt = ONBOARDING_PROMPTS["stage2"].format(user_feeling=self.user_feeling)
+        # self.greeting_speech = self._session.generate_reply(instructions=new_prompt)
         #user responds if they want to continue
 
     async def _llm_complete(self, system_prompt: str, chat_ctx: llm.ChatContext) -> str:
