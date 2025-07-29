@@ -75,7 +75,7 @@ class OnboardingAgent(Agent):
     async def on_room_disconnected(self, reason: DisconnectReason):
         print("WARN: Room Disconnected ", reason)
         chat_ctx = self.chat_ctx
-        if(self.stage == 5):
+        if(self.stage >= 3):
             if(self.stage3_response_json is None):
                 prompt = ONBOARDING_PROMPTS["stage3_output"]
                 try:
@@ -94,6 +94,7 @@ class OnboardingAgent(Agent):
                     print(f"Stage 3 failed: {exc}")
                     return
                 print("Stage 3 response ready")
+        if(self.stage == 5):
             if(self.today_plan_json is None):
                 try:
                     today_plan_json = await self.get_daily_plan(self.today, chat_ctx)
@@ -200,8 +201,8 @@ class OnboardingAgent(Agent):
 
     
     async def start(self, metadata_json : json) -> None:
-        self.user_feeling = metadata_json["feelings"]
         try:
+            self.user_id = metadata_json["userId"]
             # day as integer
             day = int(metadata_json["day"])
             if day < 0 or day > 6:

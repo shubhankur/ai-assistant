@@ -9,3 +9,6 @@ livekit-plugins-noise-cancellation==0.2.4
 # Environment variable management
 python-dotenv==1.1.0
 pip-system-certs==5.2
+
+# HTTP client for API calls
+aiohttp==3.9.1

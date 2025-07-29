@@ -1,163 +1,77 @@
 'use client'
 import React, { useEffect, useState } from 'react';
-import {useVoiceAssistant, useTextStream, useRoomContext} from '@livekit/components-react';
 import ConnectRoom from '../../components/ConnectRoom';
-import TranscriptionView from '@/components/TranscriptionView'
-import { BarVisualizer, RoomAudioRenderer } from '@livekit/components-react';
-import { VolumeWarning } from '@/components/VolumeWarning';
-import { VoiceControlBar } from '@/components/VoiceControlBar';
 import { LoadingView } from '@/components/LoadingView';
-import { Button } from '@/components/ui/button';
-import { DayPlan } from '../day/page';
+import { SessionAgent } from '@/components/SessionAgent';
+import Intro from '@/components/Intro';
+import { updateStageAtDB } from '@/utils/serverApis';
 
 export interface Metadata {
   stage:string,
-  feelings:string | null,
   day: number,
   date: string,
   time: string,
   timezone: string,
-  locale : string
-}
-
-function SessionContent() {
-  const {state, agentAttributes, audioTrack} = useVoiceAssistant();
-  console.log("state: ", state)
-  const roomCtx = useRoomContext();
-  console.log("room local participant: ", roomCtx.localParticipant.identity)
-  const stage = Number(agentAttributes?.stage ?? 1);
-
-  const {textStreams : todayPlanStream} = useTextStream("today_plan");
-  const {textStreams : tomorrowPlanStream} = useTextStream("tomorrow_plan");
-
-  const [todayPlan, setTodayPlan] = useState<DayPlan>()
-  const [tomorrowPlan, setTomorrowPlan] = useState<DayPlan>()
-  /* ------------- whenever the daily plan arrives ----------------- */
-  useEffect(() => {
-    if (todayPlanStream.length != 0) {
-      const latest = todayPlanStream[todayPlanStream.length - 1].text;
-      const parsed : DayPlan = JSON.parse(latest);
-      parsed.date = new Date().toDateString();
-      setTodayPlan(parsed);
-    }
-    else if (tomorrowPlanStream.length != 0) {
-      const latest = tomorrowPlanStream[tomorrowPlanStream.length - 1].text;
-      const parsed : DayPlan = JSON.parse(latest);
-      parsed.date = new Date(new Date().setDate(new Date().getDate() + 1)).toDateString();
-      setTomorrowPlan(parsed);
-    }
-  }, [todayPlanStream, tomorrowPlanStream]);
-
-  console.log("stage", stage)
-
-  const updateStage = (stageNum : Number) => {
-      roomCtx.localParticipant.setAttributes({
-        "stage":String(stageNum)
-      })
-      console.log("sending stage", roomCtx.localParticipant.attributes.stage)
-  }
-
-  useEffect(() => {
-    if (stage === 5) {
-      if (todayPlan) {
-        sessionStorage.setItem('currentPlan', JSON.stringify(todayPlan));
-        window.location.assign('/day');
-      } else if (tomorrowPlan) {
-        sessionStorage.setItem('currentPlan', JSON.stringify(tomorrowPlan));
-        window.location.assign('/day');
-      }
-    }
-  }, [stage, todayPlan, tomorrowPlan]);
-
-  return (
-    <div>
-      {stage < 5 && (
-      <div className="flex flex-col items-center bg-black">
-        {/* ToDo; Get device volume when media is being played and use that*/}
-        <VolumeWarning volume={1} />
-        <AgentVisualizer />
-        <div className='flex justify-center'>
-          <VoiceControlBar/>
-          <Button variant="outline" className='bg-blue-600 ml-2'
-            onClick={() => updateStage(7)}
-          >
-            Skip
-          </Button>
-        </div>
-
-        {/* {stage == 2 && 
-          (
-            <div>
-              <Button variant="outline" className='bg-blue-600'
-                onClick={() => updateStage(3)}>
-                  I have 5 uninterrupted minutes
-              </Button>
-            </div>
-          )
-        } */}
-        <div className="flex-1 w-full">
-          <TranscriptionView />
-        </div>
-      </div>
-      )}
-       {stage == 5 && !todayPlan && !tomorrowPlan && (
-            <div className='bg-black flex items-center justify-center min-h-screen'>
-              <LoadingView messages={["Analyzing Current Routine...", "Analyzing Aspirations...", "Adding Lifestyle Suggestions...", "Preparing your plan...", "Validating the plan...", "Loading your schedule...", "Almost there..."]} />
-            </div>
-          )
-        }
-    </div>
-  )
-}
-
-function AgentVisualizer() {
-  const { state: agentState, audioTrack } = useVoiceAssistant();
-  return (
-    <>
-      <div className="h-[200px] w-full">
-        <BarVisualizer
-          state={agentState}
-          barCount={5}
-          trackRef={audioTrack}
-          className="agent-visualizer"
-          options={{ minHeight: 24 }}
-        >
-        </BarVisualizer>      
-      </div>
-      <RoomAudioRenderer/>
-    </>
-
-  );
+  locale : string,
+  userId: string
 }
 
 export default function SessionPage() {
   const [metadata, setMetadata] = useState<Metadata>();
+  const [userContinue, setUserContinue] = useState(false);
+
+  const handleUserDiscontinue = async (stageNum: number) => {
+    updateStageAtDB(stageNum)
+    window.location.assign("/day")
+  }
+
+  const handleUserContinue = () => {
+    setUserContinue(true)
+  }
+
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params: URLSearchParams = new URLSearchParams(window.location.search);
-      const d = new Date();
-      const metadata_created : Metadata = {
-        stage:"1",
-        feelings: params.get('feelings'),
-        date : d.toLocaleDateString(),
-        day : d.getDay(),
-        time : d.toTimeString(),
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        locale: Intl.DateTimeFormat().resolvedOptions().locale
+    async function init() {
+        if (typeof window === 'undefined') return;
+        const userRes = await fetch('http://localhost:5005/auth/validate', { credentials: 'include' });
+        if (!userRes.ok) { 
+          window.location.assign('/'); return; 
+        }
+        const user = await userRes.json();
+        if(user.stage && user.stage != 1) {
+          window.location.assign('/day'); return; 
+        }
+        const d = new Date();
+        const metadata_created : Metadata = {
+          stage:"1",
+          date : d.toLocaleDateString(),
+          day : d.getDay(),
+          time : d.toTimeString(),
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          locale: Intl.DateTimeFormat().resolvedOptions().locale,
+          userId: user.id
+        }
+        setMetadata(metadata_created);
       }
-      setMetadata(metadata_created);
-    }
+    init();
   }, []);
+
   if(!metadata){
     return (
-      <div>
-        connecting...
+      <div className='flex items-center justify-center min-h-screen'>
+        <LoadingView centerMessage='Loading...' messages={[]}/>
       </div>
     )
   }
   return (
-    <ConnectRoom metadata={metadata}>
-      <SessionContent />
-    </ConnectRoom>
+    <div>
+      {!userContinue && (
+        <Intro handleUserContinue={handleUserContinue} handleUserDiscontinue={handleUserDiscontinue}/>
+      )}
+      {userContinue && (
+        <ConnectRoom metadata={metadata}>
+          <SessionAgent />
+        </ConnectRoom>
+      )}
+    </div>
   );
 }

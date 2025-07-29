@@ -179,7 +179,7 @@ async def store_tomorrow_plan_json(user_id: str, timezone: str, tomorrow_plan_da
         "blocks": tomorrow_plan_data.get("blocks", [])
     }
     
-    url = f"{server_url}/dailyPlans"
+    url = f"{server_url}/dailyPlans/save"
     return await post_to_api(url, daily_plan_data)
 
 

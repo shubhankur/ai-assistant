@@ -1,0 +1,93 @@
+import { AgentVisualizer } from '@/components/AgentVisualizer';
+import {useVoiceAssistant, useTextStream, useRoomContext} from '@livekit/components-react';
+import React, { useEffect, useState } from 'react';
+import { DayPlan } from '@/app/day/page';
+import TranscriptionView from '@/components/TranscriptionView'
+import { VolumeWarning } from '@/components/VolumeWarning';
+import { VoiceControlBar } from '@/components/VoiceControlBar';
+import { LoadingView } from '@/components/LoadingView';
+import { Button } from '@/components/ui/button';
+import { updateStageAtDB } from '@/utils/serverApis';
+
+export function SessionAgent() {
+    const {state, agentAttributes, audioTrack} = useVoiceAssistant();
+    console.log(state)
+    const roomCtx = useRoomContext();
+    const stage = Number(agentAttributes?.stage ?? 1);
+
+    const {textStreams : todayPlanStream} = useTextStream("today_plan");
+    const {textStreams : tomorrowPlanStream} = useTextStream("tomorrow_plan");
+    const [todayPlan, setTodayPlan] = useState<DayPlan>()
+    const [tomorrowPlan, setTomorrowPlan] = useState<DayPlan>()
+    
+    /* ------------- whenever the daily plan arrives ----------------- */
+    useEffect(() => {
+      if (todayPlanStream.length != 0) {
+        const latest = todayPlanStream[todayPlanStream.length - 1].text;
+        const parsed : DayPlan = JSON.parse(latest);
+        parsed.date = new Date().toDateString();
+        setTodayPlan(parsed);
+      }
+      else if (tomorrowPlanStream.length != 0) {
+        const latest = tomorrowPlanStream[tomorrowPlanStream.length - 1].text;
+        const parsed : DayPlan = JSON.parse(latest);
+        parsed.date = new Date(new Date().setDate(new Date().getDate() + 1)).toDateString();
+        setTomorrowPlan(parsed);
+      }
+    }, [todayPlanStream, tomorrowPlanStream]);
+  
+    const updateStage = (stageNum : Number) => {
+        roomCtx.localParticipant.setAttributes({
+          "stage":String(stageNum)
+        })
+        updateStageAtDB(stage)
+    }
+
+    //update stage at DB
+    useEffect(() => {
+      console.log(stage)
+      updateStageAtDB(stage)
+    }, [stage])
+
+    //move to /day
+    useEffect(() => {
+      if (stage === 5) {
+        if (todayPlan) {
+          sessionStorage.setItem('currentPlan', JSON.stringify(todayPlan));
+          window.location.assign('/day');
+        } else if (tomorrowPlan) {
+          sessionStorage.setItem('currentPlan', JSON.stringify(tomorrowPlan));
+          window.location.assign('/day');
+        }
+      }
+    }, [stage, todayPlan, tomorrowPlan]);
+  
+    return (
+      <div>
+        {stage < 5 && (
+        <div className="flex flex-col items-center bg-black">
+          {/* ToDo; Get device volume when media is being played and use that*/}
+          <VolumeWarning volume={1} />
+          <AgentVisualizer />
+          <div className='flex justify-center'>
+            <VoiceControlBar/>
+            <Button variant="outline" className='bg-blue-600 ml-2'
+              onClick={() => updateStage(-1)}
+            >
+              Skip
+            </Button>
+          </div>
+          <div className="flex-1 w-full">
+            <TranscriptionView />
+          </div>
+        </div>
+        )}
+         {stage == 5 && !todayPlan && !tomorrowPlan && (
+              <div className='bg-black flex items-center justify-center min-h-screen'>
+                <LoadingView centerMessage="take a few deep breaths" messages={["Analyzing Current Routine...", "Analyzing Aspirations...", "Adding Lifestyle Suggestions...", "Preparing your plan...", "Validating the plan...", "Loading your schedule...", "Almost there..."]} />
+              </div>
+            )
+          }
+      </div>
+    )
+  }

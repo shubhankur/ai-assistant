@@ -14,6 +14,8 @@ from dotenv import load_dotenv
 from onboarding_prompts import ONBOARDING_PROMPTS
 import json
 import asyncio
+import aiohttp
+import os
 load_dotenv('.env', override=True)
 
 def createSession() -> AgentSession :
@@ -41,7 +43,38 @@ def createSession() -> AgentSession :
     )
     return session
 
+async def verify_user_exists(user_id: str) -> bool:
+    """
+    Verify that a user exists by making a GET request to the server API.
+    
+    Args:
+        user_id (str): The user ID to verify
+        
+    Returns:
+        bool: True if user exists, False otherwise
+    """
+    server_url = os.getenv('SERVER_URL', 'http://localhost:5005')
+    url = f"{server_url}/auth/verify-user/{user_id}"
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as response:
+                if response.status == 200:
+                    user_data = await response.json()
+                    print(f"User {user_id} verified successfully: {user_data.get('name', 'Unknown')}")
+                    return True
+                elif response.status == 404:
+                    print(f"User {user_id} not found")
+                    return False
+                else:
+                    print(f"Error verifying user {user_id}: HTTP {response.status}")
+                    return False
+    except Exception as e:
+        print(f"Failed to verify user {user_id}: {str(e)}")
+        return False
+
 async def entrypoint(ctx: agents.JobContext):
+    print("metaadata", ctx.decode_token().get("metadata"))
     session = createSession()
     agent = OnboardingAgent(session)
     await session.start(
@@ -57,11 +90,32 @@ async def entrypoint(ctx: agents.JobContext):
 
     for p in ctx.room.remote_participants.values():
         print("participant", p.identity)
-        if(p.identity.startswith("user")):
-            metadata = p.metadata or ctx.decode_token().get("metadata", "")
+        if(p.identity):
+            metadata = p.metadata
             print("metadata", metadata)
-            metadataJson = json.loads(metadata)
-            stage = int(metadataJson['stage'])
+            try:
+                metadataJson = json.loads(metadata)
+                if 'stage' not in metadataJson:
+                    print("Error: No stage found in metadata")
+                    return
+                
+                # Extract user ID from metadata and verify user exists
+                user_id = metadataJson['userId']
+                if(user_id is None or user_id != p.identity):
+                    print(f"Error: User Id {user_id} or Participant Id {p.identity} Incorrect")
+                    return
+                if user_id:
+                    user_exists = await verify_user_exists(user_id)
+                    if not user_exists:
+                        print(f"Error: User {user_id} not found in database")
+                        return
+                else:
+                    print("Warning: No userId found in metadata")
+                
+                stage = int(metadataJson['stage'])
+            except (json.JSONDecodeError, ValueError) as e:
+                print(f"Error parsing metadata: {str(e)}")
+                return
             if(stage == 1):
                 def participant_attributes_changed_sync(attributes, participant):
                     asyncio.create_task(agent.on_participant_attribute_changed(attributes, participant))
@@ -78,7 +132,7 @@ async def entrypoint(ctx: agents.JobContext):
                 new_agent = DayAgent(session)
                 session.update_agent(new_agent)
         else:
-            print("Error: Participant is not a user.")
+            print("Error: Participant identity is none.")
 
 if __name__ == "__main__":
     agents.cli.run_app(agents.WorkerOptions(entrypoint_fnc=entrypoint))
