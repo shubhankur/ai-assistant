@@ -37,7 +37,7 @@ export default function NavBar() {
         <li className="px-4 py-2 lg:p-0"><Link href="/about">About</Link></li>
         <li className="px-4 py-2 lg:p-0"><Link href="/privacy">Privacy Policy</Link></li>
         <li className="px-4 py-2 lg:p-0"><a href="https://twitter.com" target="_blank" rel="noopener noreferrer">Twitter</a></li>
-        <li className="px-4 py-2 lg:p-0"><button onClick={handleSignOut}>Sign Out</button></li>
+        {name && <li className="px-4 py-2 lg:p-0"><button onClick={handleSignOut}>Sign Out</button></li>}
       </ul>
     </nav>
   )

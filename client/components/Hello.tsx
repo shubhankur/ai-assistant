@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useRef } from 'react';
 import Vara from 'vara';
+// Track whether the Vara animation has already been rendered to avoid duplicates
 
 export default function Hello() {
   const container = useRef<HTMLDivElement>(null);

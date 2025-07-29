@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { GoogleLogin, GoogleOAuthProvider } from '@react-oauth/google';
+import { GoogleLogin, GoogleOAuthProvider, PromptMomentNotification } from '@react-oauth/google';
 
 const passwordRegex = /^(?=[A-Za-z])(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*\-_])[A-Za-z\d!@#$%^&*\-_]{10,}$/;
 
@@ -77,9 +77,13 @@ export function Login() {
         return;
       }
       const stage = data.stage ?? 1;
-      if (stage >= 1 && stage < 5) window.location.assign('/session');
-      else if (stage === 5) window.location.assign('/day');
+      if (stage == 1) window.location.assign('/session');
+      else window.location.assign('/day');
     };
+
+    const onGoogleClick = () => {
+        setGoogleLoading(true)
+    }
 
     return (
       <div className="flex-col max-w-sm w-full border-white border-1 rounded-2xl p-10 shadow-xl">
@@ -138,8 +142,8 @@ export function Login() {
                     setGoogleLoading(false);
                     if (res.ok) {
                         const stage = data.stage ?? 1;
-                        if (stage >=1 && stage <5) window.location.assign('/session');
-                        else if (stage === 5) window.location.assign('/day');
+                        if (Number(stage) === 1) window.location.assign('/session');
+                        else window.location.assign('/day');
                     } else {
                         setError('Google auth failed');
                     }
@@ -150,6 +154,7 @@ export function Login() {
                 useOneTap={true}
                 theme="filled_blue"
                 type="standard"
+                click_listener={onGoogleClick}
             />
             {googleLoading && <span className="text-white ml-2">Loading...</span>}
             </div>

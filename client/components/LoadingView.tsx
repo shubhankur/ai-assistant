@@ -2,26 +2,32 @@
 import { useEffect, useState } from "react";
 import {motion, AnimatePresence} from 'framer-motion'
 
-const LoadingRing = () => (
+interface LoadingRingConfig {
+    centerMessage : string,
+
+}
+
+export const LoadingRing = ({ centerMessage }: { centerMessage: string }) => (
     <div className="relative flex items-center justify-center w-32 h-32 mb-6 select-none">
       {/** Pulsating outline */}
       <motion.div
-        className="absolute inset-0 rounded-full border-4 border-primary"
+        className="absolute inset-0 rounded-full border-4 border-primary border-red"
         animate={{ scale: [2.5, 4 , 2.5], opacity: [0.6, 1, 0.6] }}
         transition={{ duration: 10, ease: "easeInOut", repeat: Infinity }}
       />
   
-      <span className="absolute text-sm font-medium text-primary-foreground text-center px-2 pointer-events-none">
-        take a few deep breaths
+      <span className="absolute text-sm font-medium text-white text-center px-2 pointer-events-none">
+        {centerMessage}
       </span>
     </div>
   );
 
-interface MessageList {    
+interface Configurations {
+    centerMessage: string    
     messages: string[]
 }
 
-export function LoadingView(messageList: MessageList) {
+export function LoadingView(messageList: Configurations) {
     const [idx, setIdx] = useState(0);
 
     useEffect(() => {
@@ -33,8 +39,8 @@ export function LoadingView(messageList: MessageList) {
     }, []);
 
     return (
-        <div className="flex flex-col items-center text-muted-foreground">
-            <LoadingRing />
+        <div className="flex flex-col items-center text-white ">
+            <LoadingRing centerMessage={messageList.centerMessage} />
 
             <AnimatePresence mode="wait" initial={true}>
                 <motion.p
