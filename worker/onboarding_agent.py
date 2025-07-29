@@ -200,8 +200,8 @@ class OnboardingAgent(Agent):
 
     
     async def start(self, metadata_json : json) -> None:
-        self.user_feeling = metadata_json["feelings"]
         try:
+            self.user_id = metadata_json["userId"]
             # day as integer
             day = int(metadata_json["day"])
             if day < 0 or day > 6:

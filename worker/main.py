@@ -42,9 +42,25 @@ def createSession() -> AgentSession :
     return session
 
 async def entrypoint(ctx: agents.JobContext):
-    session = createSession()
-    agent = OnboardingAgent(session)
-    await session.start(
+    metadata = ctx.decode_token().get("metadata")
+    metadataJson = json.loads(metadata)
+    stage = int(metadataJson['stage'])
+    
+    if(stage == 1):
+        def participant_attributes_changed_sync(attributes, participant):
+            asyncio.create_task(agent.on_participant_attribute_changed(attributes, participant))
+        def on_room_disconnected_sync(reason):
+            asyncio.create_task(agent.on_room_disconnected(reason))
+        def on_participant_disconnected_sync(reason):
+            asyncio.create_task(agent.on_participant_disconnected(reason))
+
+        session = createSession()
+        agent = OnboardingAgent(session)
+        agent.set_room(ctx.room)
+        ctx.room.on("participant_attributes_changed", participant_attributes_changed_sync)
+        ctx.room.on("disconnected", on_room_disconnected_sync)
+        ctx.room.on("participant_disconnected", on_participant_disconnected_sync)
+        await session.start(
                     room=ctx.room,
                     agent=agent,
                     room_input_options=RoomInputOptions(
@@ -52,33 +68,22 @@ async def entrypoint(ctx: agents.JobContext):
                         # - If self-hosting, omit this parameter
                         # - For telephony applications, use `BVCTelephony` for best results
                         noise_cancellation=noise_cancellation.BVC(), 
-                    ),
-                )
-
-    for p in ctx.room.remote_participants.values():
-        print("participant", p.identity)
-        if(p.identity.startswith("user")):
-            metadata = p.metadata or ctx.decode_token().get("metadata", "")
-            print("metadata", metadata)
-            metadataJson = json.loads(metadata)
-            stage = int(metadataJson['stage'])
-            if(stage == 1):
-                def participant_attributes_changed_sync(attributes, participant):
-                    asyncio.create_task(agent.on_participant_attribute_changed(attributes, participant))
-                def on_room_disconnected_sync(reason):
-                    asyncio.create_task(agent.on_room_disconnected(reason))
-                def on_participant_disconnected_sync(reason):
-                    asyncio.create_task(agent.on_participant_disconnected(reason))
-                agent.set_room(ctx.room)
-                ctx.room.on("participant_attributes_changed", participant_attributes_changed_sync)
-                ctx.room.on("disconnected", on_room_disconnected_sync)
-                ctx.room.on("participant_disconnected", on_participant_disconnected_sync)
-                await agent.start(metadataJson)
-            elif(stage == 6):
-                new_agent = DayAgent(session)
-                session.update_agent(new_agent)
-        else:
-            print("Error: Participant is not a user.")
+            ),
+        )
+        await agent.start(metadataJson)
+    elif(stage == 5):
+        day_agent = DayAgent(session)
+        session = createSession()
+        await session.start(
+                    room=ctx.room,
+                    agent=day_agent,
+                    room_input_options=RoomInputOptions(
+                        # LiveKit Cloud enhanced noise cancellation
+                        # - If self-hosting, omit this parameter
+                        # - For telephony applications, use `BVCTelephony` for best results
+                        noise_cancellation=noise_cancellation.BVC(), 
+            ),
+        )
 
 if __name__ == "__main__":
     agents.cli.run_app(agents.WorkerOptions(entrypoint_fnc=entrypoint))
