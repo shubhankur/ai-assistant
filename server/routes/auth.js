@@ -155,6 +155,26 @@ router.get('/validate', async (req, res) => {
   }
 });
 
+// Public endpoint to verify user exists by ID (for worker verification)
+router.get('/verify-user/:id', async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json({ 
+      exists: true, 
+      id: user._id, 
+      name: user.name, 
+      email: user.email, 
+      stage: user.stage 
+    });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 router.post('/logout', (req, res) => {
   res.clearCookie('user');
   res.json({ message: 'logged_out' });
