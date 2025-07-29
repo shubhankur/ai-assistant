@@ -7,6 +7,10 @@ export function Login() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [googleLoading, setGoogleLoading] = useState(false);
+    const [verifying, setVerifying] = useState(false);
+    const [verifyCode, setVerifyCode] = useState("");
 
     const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
@@ -14,6 +18,7 @@ export function Login() {
         setError("Password must be 10+ chars, start with a letter and contain atleast one uppercase, lowercase, number and a special character");
         return;
       }
+      setLoading(true);
       const res = await fetch("http://localhost:5005/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -23,23 +28,18 @@ export function Login() {
       const data = await res.json();
       if (res.status === 401) {
         setError("Wrong password");
+        setLoading(false);
         return;
       }
       if (data.message === "verification_required") {
-        const code = prompt("Enter verification code sent to your email");
-        if (!code) return;
-        const vr = await fetch("http://localhost:5005/auth/verify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, code }),
-          credentials: 'include',
-        });
-        if (!vr.ok) {
-          setError("Invalid verification code");
-          return;
-        }
+        setVerifying(true);
+        setLoading(false);
+        return;
       }
-      window.location.assign("/session");
+      setLoading(false);
+      const stage = data.stage ?? 1;
+      if (stage >= 1 && stage < 5) window.location.assign('/session');
+      else if (stage === 5) window.location.assign('/day');
     };
 
     const handleForgot = async () => {
@@ -62,6 +62,23 @@ export function Login() {
         credentials: 'include',
       });
       window.location.assign("/session");
+    };
+
+    const handleVerify = async () => {
+      const vr = await fetch("http://localhost:5005/auth/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, code: verifyCode }),
+        credentials: 'include',
+      });
+      const data = await vr.json();
+      if (!vr.ok) {
+        setError("Invalid verification code");
+        return;
+      }
+      const stage = data.stage ?? 1;
+      if (stage >= 1 && stage < 5) window.location.assign('/session');
+      else if (stage === 5) window.location.assign('/day');
     };
 
     return (
@@ -88,7 +105,7 @@ export function Login() {
             type="submit"
             className="mt-2 py-3 rounded-xl bg-indigo-500 hover:bg-indigo-600 transition font-semibold text-white"
           >
-            Sign In / Sign Up
+            {loading ? 'Loading...' : 'Sign In / Sign Up'}
           </button>
           <button type="button" onClick={handleForgot} className="text-sm text-blue-300 hover:underline">Forgot password?</button>
         </form>
@@ -110,27 +127,49 @@ export function Login() {
                 onSuccess={async (cred) => {
                     const token = cred.credential;
                     if (!token) return;
+                    setGoogleLoading(true);
                     const res = await fetch('http://localhost:5005/auth/google', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ token }),
                         credentials: 'include',
                     });
+                    const data = await res.json();
+                    setGoogleLoading(false);
                     if (res.ok) {
-                        window.location.assign('/session');
+                        const stage = data.stage ?? 1;
+                        if (stage >=1 && stage <5) window.location.assign('/session');
+                        else if (stage === 5) window.location.assign('/day');
                     } else {
                         setError('Google auth failed');
                     }
                 }}
-                onError={() => setError('Google auth failed')}
+                onError={() => { setError('Google auth failed'); setGoogleLoading(false); }}
                 shape="pill"
                 width="250"
                 useOneTap={true}
                 theme="filled_blue"
                 type="standard"
             />
+            {googleLoading && <span className="text-white ml-2">Loading...</span>}
             </div>
         </GoogleOAuthProvider>
+        {verifying && (
+          <div className="fixed inset-0 bg-black/70 flex items-center justify-center">
+            <div className="bg-gray-800 p-6 rounded-xl space-y-4">
+              <p className="text-white">Enter verification code</p>
+              <input
+                className="p-2 rounded-md bg-gray-700 text-white focus:outline-none"
+                value={verifyCode}
+                onChange={e => setVerifyCode(e.target.value)}
+              />
+              <div className="flex justify-end gap-2">
+                <button className="px-4 py-1 bg-gray-600 rounded" onClick={()=>setVerifying(false)}>Cancel</button>
+                <button className="px-4 py-1 bg-blue-600 rounded" onClick={handleVerify}>Verify</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

@@ -17,7 +17,8 @@ export interface Metadata {
   date: string,
   time: string,
   timezone: string,
-  locale : string
+  locale : string,
+  userId: string
 }
 
 function SessionContent() {
@@ -133,7 +134,11 @@ function AgentVisualizer() {
 export default function SessionPage() {
   const [metadata, setMetadata] = useState<Metadata>();
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    async function init() {
+      if (typeof window === 'undefined') return;
+      const userRes = await fetch('http://localhost:5005/auth/validate', { credentials: 'include' });
+      if (!userRes.ok) { window.location.assign('/'); return; }
+      const user = await userRes.json();
       const params: URLSearchParams = new URLSearchParams(window.location.search);
       const d = new Date();
       const metadata_created : Metadata = {
@@ -143,10 +148,12 @@ export default function SessionPage() {
         day : d.getDay(),
         time : d.toTimeString(),
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        locale: Intl.DateTimeFormat().resolvedOptions().locale
+        locale: Intl.DateTimeFormat().resolvedOptions().locale,
+        userId: user.id
       }
       setMetadata(metadata_created);
     }
+    init();
   }, []);
   if(!metadata){
     return (

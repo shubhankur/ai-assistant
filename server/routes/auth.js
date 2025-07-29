@@ -2,11 +2,30 @@ const express = require('express');
 const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/user');
 const sgMail = require('@sendgrid/mail')
+const crypto = require('crypto');
+const cookieParser = require('cookie');
 
 const router = express.Router();
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY)
+
+const SECRET = process.env.SECRET_KEY || 'secret';
+const KEY = crypto.createHash('sha256').update(String(SECRET)).digest();
+function encrypt(text) {
+  const iv = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv('aes-256-ctr', KEY, iv);
+  const enc = Buffer.concat([cipher.update(text), cipher.final()]);
+  return Buffer.concat([iv, enc]).toString('base64url');
+}
+function decrypt(data) {
+  const buf = Buffer.from(data, 'base64url');
+  const iv = buf.subarray(0, 16);
+  const enc = buf.subarray(16);
+  const decipher = crypto.createDecipheriv('aes-256-ctr', KEY, iv);
+  const dec = Buffer.concat([decipher.update(enc), decipher.final()]);
+  return dec.toString();
+}
 
 router.post('/login', async (req, res) => {
   try {
@@ -19,7 +38,7 @@ router.post('/login', async (req, res) => {
       if (user.password !== password) {
         return res.status(401).json({ error: 'Wrong password' });
       }
-      res.cookie('user', JSON.stringify({ id: user._id, name: user.name, email: user.email }), { httpOnly: true });
+      res.cookie('user', encrypt(String(user._id)), { httpOnly: true });
       return res.json(user);
     }
     const name = email.split('@')[0];
@@ -57,8 +76,8 @@ router.post('/verify', async (req, res) => {
     user.verified = true;
     user.verificationCode = undefined;
     await user.save();
-    res.cookie('user', JSON.stringify({ id: user._id, name: user.name, email: user.email }), { httpOnly: true });
-    res.json({ message: 'verified' });
+    res.cookie('user', encrypt(String(user._id)), { httpOnly: true });
+    res.json({ message: 'verified', stage: user.stage, id: user._id, name: user.name, email: user.email });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -97,8 +116,8 @@ router.post('/reset', async (req, res) => {
     user.password = password;
     user.resetCode = undefined;
     await user.save();
-    res.cookie('user', JSON.stringify({ id: user._id, name: user.name, email: user.email }), { httpOnly: true });
-    res.json({ message: 'password_reset' });
+    res.cookie('user', encrypt(String(user._id)), { httpOnly: true });
+    res.json({ message: 'password_reset', stage: user.stage, id: user._id, name: user.name, email: user.email });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -115,11 +134,30 @@ router.post('/google', async (req, res) => {
       const name = email.split('@')[0];
       user = await User.create({ email, name, gauth: true, verified: true });
     }
-    res.cookie('user', JSON.stringify({ id: user._id, name: user.name, email: user.email }), { httpOnly: true });
+    res.cookie('user', encrypt(String(user._id)), { httpOnly: true });
     res.json(user);
   } catch (err) {
     res.status(400).json({ error: 'Google auth failed' });
   }
+});
+
+router.get('/validate', async (req, res) => {
+  try {
+    const parsed = req.headers.cookie ? cookieParser.parse(req.headers.cookie) : {};
+    const cookie = parsed.user;
+    if (!cookie) return res.status(401).json({ error: 'No cookie' });
+    const id = decrypt(cookie);
+    const user = await User.findById(id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json({ id: user._id, name: user.name, email: user.email, stage: user.stage });
+  } catch (err) {
+    res.status(400).json({ error: 'Invalid cookie' });
+  }
+});
+
+router.post('/logout', (req, res) => {
+  res.clearCookie('user');
+  res.json({ message: 'logged_out' });
 });
 
 module.exports = router;

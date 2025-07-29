@@ -3,10 +3,14 @@ import { AccessToken } from 'livekit-server-sdk';
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const metadata = searchParams.get('metadata') || '';
-  const id = Math.random().toString(36).slice(2, 10)
-  const identity = `user-${id}`;
-  const roomName = `room-${id}`
+  const metadataStr = searchParams.get('metadata') || '';
+  let id = Math.random().toString(36).slice(2, 10);
+  try {
+    const meta = JSON.parse(metadataStr);
+    if (meta.userId) id = meta.userId;
+  } catch {}
+  const identity = id;
+  const roomName = `room-${id}`;
   const apiKey = process.env.LIVEKIT_API_KEY;
   const apiSecret = process.env.LIVEKIT_API_SECRET;
   const serverUrl = process.env.LIVEKIT_URL;
@@ -17,7 +21,7 @@ export async function GET(req: Request) {
 
   const at = new AccessToken(apiKey, apiSecret, { identity });
   at.addGrant({ roomJoin: true, room: roomName, canUpdateOwnMetadata: true, canPublishData: true, canSubscribe: true });
-  at.metadata = metadata;
+  at.metadata = metadataStr;
   const token = await at.toJwt();
 
   return NextResponse.json({ token, serverUrl });

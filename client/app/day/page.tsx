@@ -53,34 +53,23 @@ const sample = {
 export default function DailyPage() {
   const [tab, setTab] = useState<"quick" | "timeline">("quick");
   const [plan, setPlan] = useState<DayPlan | null>(null);
+  const [startAgent, setStartAgent] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      // Try to get plan from session storage first
-      const storedPlan = sessionStorage.getItem('currentPlan');
-      if (storedPlan) {
-        try {
-          const parsed = JSON.parse(storedPlan);
-          setPlan(parsed);
-          return;
-        } catch (e) {
-          console.error('Failed to parse stored plan:', e);
-          sessionStorage.removeItem('currentPlan');
-        }
-      }
-      
-      // Fallback to URL parameter for backward compatibility
-      const params = new URLSearchParams(window.location.search);
-      const planParam = params.get("plan");
-      if (planParam) {
-        try {
-          const parsed = JSON.parse(decodeURIComponent(planParam));
-          setPlan(parsed);
-        } catch (e) {
-          setPlan(null);
-        }
+    async function fetchPlan() {
+      const ures = await fetch('http://localhost:5005/auth/validate', { credentials: 'include' });
+      if (!ures.ok) { window.location.assign('/'); return; }
+      const user = await ures.json();
+      const today = new Date().toLocaleDateString();
+      const res = await fetch(`http://localhost:5005/dailyPlans?userid=${user.id}&date=${encodeURIComponent(today)}`);
+      if (res.ok) {
+        const p = await res.json();
+        setPlan(p);
+      } else {
+        setStartAgent(true);
       }
     }
+    fetchPlan();
   }, []);
 
   const displayPlan = plan || sample; //ToDO: Remove Sample, its just for now to test easily
@@ -107,7 +96,7 @@ export default function DailyPage() {
       </div>
 
       {/* view */}
-      {tab === "quick" ? <DailyQuickView {...displayPlan}  /> : <DailyPlan {...displayPlan}/>}
+      {tab === "quick" ? <DailyQuickView {...displayPlan} startAgent={startAgent} /> : <DailyPlan {...displayPlan}/>}
     </div>
   );
 }

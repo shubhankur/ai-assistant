@@ -33,8 +33,8 @@ const to12h = (t: string) => {
 };
 
 
-export function DailyQuickView (plan:DayPlan) {
-  const [agent, setAgent] = useState<Boolean>(false);
+export function DailyQuickView (plan: DayPlan & { startAgent?: boolean }) {
+  const [agent, setAgent] = useState<Boolean>(plan.startAgent ?? false);
   const [metadata, setMetadata]= useState<JSON>();
   const activateAI = () => {
       setAgent(true);
