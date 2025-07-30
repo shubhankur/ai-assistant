@@ -1,5 +1,5 @@
 import tiktoken
-from .http_utils import api_post
+from http_utils import api_post
 import re
 import traceback
 from livekit.agents import llm

@@ -15,7 +15,7 @@ from onboarding_prompts import ONBOARDING_PROMPTS
 import json
 import asyncio
 import os
-from .http_utils import api_get
+from http_utils import api_get
 load_dotenv('.env', override=True)
 
 def createSession() -> AgentSession :
