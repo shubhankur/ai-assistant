@@ -201,7 +201,8 @@ class OnboardingAgent(Agent):
             #ToDO: Verify this response is not added to the context
             return "".join(parts).strip()
         except Exception as e:
-            print("ERROR in LLM Complete ", str(e.__cause__))
+            print("ERROR in LLM Complete ", e)
+            raise
 
     def _parse_json(self, text: str) -> dict | None:
         """Attempt to parse a JSON object from the given text."""
