@@ -55,9 +55,8 @@ async def verify_user_exists(user_id: str) -> bool:
     """
     url = f"auth/verify-user/{user_id}"
     try:
-        response = await api_get(url)
+        response, user_data = await api_get(url)
         if response.status == 200:
-            user_data = await response.json()
             print(f"User {user_id} verified successfully: {user_data.get('name', 'Unknown')}")
             return True
         elif response.status == 404:
