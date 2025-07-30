@@ -71,7 +71,6 @@ async def verify_user_exists(user_id: str) -> bool:
         return False
 
 async def entrypoint(ctx: agents.JobContext):
-    print("metaadata", ctx.decode_token().get("metadata"))
     session = createSession()
     agent = OnboardingAgent(session)
     await session.start(
