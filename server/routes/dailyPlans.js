@@ -7,6 +7,17 @@ router.post('/save', async (req, res) => {
   try {
     // Add user ID from authenticated user
     const dailyPlanData = { ...req.body, userid: req.user._id };
+    // Check if plan already exists for this user and date
+    const existingPlan = await DailyPlan.findOne({
+      userid: req.user._id,
+      date: dailyPlanData.date
+    });
+
+    if (existingPlan) {
+      // Increment version number
+      dailyPlanData.version = (existingPlan.version || 0) + 1;
+    }
+    // Create new document with version number
     const doc = await DailyPlan.create(dailyPlanData);
     res.status(201).json(doc);
   } catch (err) {
@@ -23,39 +34,13 @@ router.get('/fetchByDate', async (req, res) => {
     const doc = await DailyPlan.findOne({ 
       userid: req.user._id,
       date: date,
-    });
+    }).sort({ version: -1 }); // Get the document with highest version
     if (!doc) return res.status(404).json({ error: 'Not found' });
     res.json(doc);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
-
-router.get('/', async (req, res) => {
-  try {
-    if (req.query.date) {
-      const doc = await DailyPlan.findOne({ userid: req.user._id, date: req.query.date });
-      if (!doc) return res.status(404).json({ error: 'Not found' });
-      return res.json(doc);
-    }
-    // Get all daily plans for the authenticated user
-    const docs = await DailyPlan.find({ userid: req.user._id });
-    res.json(docs);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
-
-router.get('/:id', async (req, res) => {
-  try {
-    const doc = await DailyPlan.findById(req.params.id);
-    if (!doc) return res.status(404).json({ error: 'Not found' });
-    res.json(doc);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
-
 
 router.put('/:id', async (req, res) => {
   try {

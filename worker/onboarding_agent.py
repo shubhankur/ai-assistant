@@ -164,8 +164,8 @@ class OnboardingAgent(Agent):
                 today_date = parse_date(metadata_json["date"], locale=loc)
                 self.today_date_parsed = today_date
                 tomorrow_date = today_date + timedelta(days=1)
-                self.today_date = format_date(today_date, format="short", locale=loc)
-                self.tomorrow_date = format_date(tomorrow_date, format="short", locale=loc)
+                self.today_date = format_date(today_date, format="yyyy-MM-dd", locale=loc)
+                self.tomorrow_date = format_date(tomorrow_date, format="yyyy-MM-dd", locale=loc)
             except ValueError as e:
                 raise ValueError(f"Error parsing dates: {str(e)}")
 
@@ -397,7 +397,7 @@ class OnboardingAgent(Agent):
                 day_idx = days.index(self.today)
                 today_date = self.today_date_parsed
                 week_start_date = today_date - timedelta(days=day_idx)
-                week_start_date = format_date(week_start_date, format="short", locale=self.locale.replace("-", "_"))
+                week_start_date = format_date(week_start_date, format="yyyy-MM-dd", locale=self.locale.replace("-", "_"))
                 weekly_plan_json["date"] = self.today_date
                 weekly_plan_json["locale"] = self.locale
                 await save_to_server("weeklyRoutines/save", weekly_plan_json)

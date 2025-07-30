@@ -34,6 +34,11 @@ const to12h = (t: string) => {
 
 
 export function DailyQuickView (plan: DayPlan) {
+  const [year, month, day] = plan.date.split('-')
+
+  console.log(plan.date)
+  console.log(new Date(plan.date).toLocaleDateString())
+  console.log(new Date(plan.date).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" }))
   const [agent, setAgent] = useState<Boolean>(false);
   const [metadata, setMetadata]= useState<JSON>();
   const activateAI = () => {
@@ -72,7 +77,7 @@ export function DailyQuickView (plan: DayPlan) {
     </div>
     <div className="flex items-center gap-2 text-white mb-2">
       <Calendar size={18} />
-      <h2 className="text-xl font-semibold">{new Date(plan.date).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}</h2>
+      <h2 className="text-xl font-semibold">{parseInt(month)}/{parseInt(day)}/{year}</h2>
     </div>
 
     <div className="space-y-3">

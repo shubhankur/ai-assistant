@@ -52,7 +52,7 @@ export default function SessionPage() {
           day : d.getDay(),
           time : d.toTimeString(),
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          locale: Intl.DateTimeFormat().resolvedOptions().locale,
+          locale: "en_US",
           userId: user.id
         }
         setMetadata(metadata_created);
