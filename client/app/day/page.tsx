@@ -62,7 +62,13 @@ export default function DailyPage() {
       } else {
         const dailyPlanFromSessionStorage = sessionStorage.getItem("currentPlan")
         if(dailyPlanFromSessionStorage) {
-          setPlan(JSON.parse(dailyPlanFromSessionStorage))
+          const tempPlan : DayPlan = JSON.parse(dailyPlanFromSessionStorage)
+          const today = new Date().toLocaleDateString();
+          const tomorrow = new Date(new Date().setDate(new Date().getDate() + 1)).toLocaleDateString();
+          const whichDay = tempPlan.date === today ? 'today' : tempPlan.date === tomorrow ? 'tomorrow' : null;
+          console.log("Day in session storage is ", whichDay)
+          if(whichDay) setPlan(tempPlan)
+          else sessionStorage.removeItem("currentPlan")
         } else {
           setStartAgent(true);
         }
