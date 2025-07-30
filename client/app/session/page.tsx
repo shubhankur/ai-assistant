@@ -35,12 +35,11 @@ export default function SessionPage() {
         if (typeof window === 'undefined') return;
         const userRes = await fetch(`${SERVER_URL}/auth/validate`, { credentials: 'include' });
         if (!userRes.ok) { 
-          window.location.assign('/'); return; 
+          window.location.assign('/login'); return; 
         }
         const user = await userRes.json();
         if(!user.verified){
-          await fetch(`${SERVER_URL}/auth/resend-code`, { method: 'POST', credentials: 'include' });
-          window.location.assign('/?verify=1');
+          window.location.assign('/login?verify=1');
           return;
         }
         if(user.stage && user.stage != 1) {

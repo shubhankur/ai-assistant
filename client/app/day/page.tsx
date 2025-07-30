@@ -59,11 +59,10 @@ export default function DailyPage() {
   useEffect(() => {
     async function fetchPlan() {
       const ures = await fetch(`${SERVER_URL}/auth/validate`, { credentials: 'include' });
-      if (!ures.ok) { window.location.assign('/'); return; }
+      if (!ures.ok) { window.location.assign('/login'); return; }
       const user = await ures.json();
       if(!user.verified){
-        await fetch(`${SERVER_URL}/auth/resend-code`, { method: 'POST', credentials: 'include' });
-        window.location.assign('/?verify=1');
+        window.location.assign('/login?verify=1');
         return;
       }
       const today = new Date().toLocaleDateString();

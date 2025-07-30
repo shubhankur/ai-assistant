@@ -17,23 +17,7 @@ export function Login({ initialVerify = false }: { initialVerify?: boolean } = {
     const [forgotEmail, setForgotEmail] = useState("");
     const [forgotCode, setForgotCode] = useState("");
     const [forgotPass, setForgotPass] = useState("");
-
-    useEffect(() => {
-      if (initialVerify) {
-        (async () => {
-          try {
-            const res = await fetch(`${SERVER_URL}/auth/validate`, { credentials: 'include' });
-            if (res.ok) {
-              const u = await res.json();
-              setEmail(u.email);
-              setVerifying(true);
-            }
-          } catch {
-            /* ignore */
-          }
-        })();
-      }
-    }, [initialVerify]);
+    console.log("verifying ", verifying)
 
     const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
@@ -55,7 +39,7 @@ export function Login({ initialVerify = false }: { initialVerify?: boolean } = {
         return;
       }
       if (data.message === "verification_required") {
-        window.location.assign('/?verify=1');
+        setVerifying(true);
         setLoading(false);
         return;
       }
@@ -86,7 +70,12 @@ export function Login({ initialVerify = false }: { initialVerify?: boolean } = {
         body: JSON.stringify({ email: forgotEmail, code: forgotCode, password: forgotPass }),
         credentials: 'include',
       });
-      if (rr.ok) { window.location.assign('/session'); }
+      if (rr.ok) { 
+        window.location.assign('/session'); 
+      } else {
+        const data = await rr.json();
+        setError(data.error || 'Password reset failed. Please try again.');
+      }
     };
 
     const handleVerify = async () => {
@@ -197,7 +186,13 @@ export function Login({ initialVerify = false }: { initialVerify?: boolean } = {
                 value={verifyCode}
                 onChange={e => setVerifyCode(e.target.value)}
               />
-              {codeExpired && <p className="text-red-400 text-sm">Code expired. <button className="underline" onClick={async()=>{await fetch(`${SERVER_URL}/auth/resend-code`, {method:'POST', credentials:'include'}); setCodeExpired(false);}}>Resend</button></p>}
+              {codeExpired && 
+                <p className="text-red-400 text-sm">Code expired. 
+                <button className="underline" onClick=
+                {async()=>{
+                    await fetch(`${SERVER_URL}/auth/resend-code`, {method:'POST', credentials:'include'}); 
+                    setCodeExpired(false);}
+                }>Resend</button></p>}
               <div className="flex justify-end gap-2">
                 <button className="px-4 py-1 bg-gray-600 rounded" onClick={()=>setVerifying(false)}>Cancel</button>
                 <button className="px-4 py-1 bg-blue-600 rounded" onClick={handleVerify}>Verify</button>
@@ -217,6 +212,7 @@ export function Login({ initialVerify = false }: { initialVerify?: boolean } = {
                     <button className="px-4 py-1 bg-gray-600 rounded" onClick={()=>setForgotStage(0)}>Cancel</button>
                     <button className="px-4 py-1 bg-blue-600 rounded" onClick={sendForgot}>Send Code</button>
                   </div>
+                  {error && <span className="text-red-400 text-sm">{error}</span>}
                 </>
               )}
               {forgotStage === 2 && (
@@ -225,9 +221,14 @@ export function Login({ initialVerify = false }: { initialVerify?: boolean } = {
                   <input placeholder="Code" className="p-2 rounded-md bg-gray-700 text-white focus:outline-none" value={forgotCode} onChange={e=>setForgotCode(e.target.value)} />
                   <input placeholder="New password" type="password" className="p-2 rounded-md bg-gray-700 text-white focus:outline-none" value={forgotPass} onChange={e=>setForgotPass(e.target.value)} />
                   <div className="flex justify-end gap-2">
-                    <button className="px-4 py-1 bg-gray-600 rounded" onClick={()=>setForgotStage(0)}>Cancel</button>
+                    <button className="px-4 py-1 bg-gray-600 rounded" onClick={()=>{
+                        setError("")
+                        setForgotStage(0)
+                        }}
+                        >Cancel</button>
                     <button className="px-4 py-1 bg-blue-600 rounded" onClick={handleReset}>Reset</button>
                   </div>
+                  {error && <span className="text-red-400 text-sm">{error}</span>}
                 </>
               )}
             </div>
