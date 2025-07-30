@@ -339,7 +339,7 @@ class OnboardingAgent(Agent):
                     print("llm_node stage3")
                     response = ""
                     start_time = time.time()
-                    validation_signal = "information collected"
+                    validation_signal = "SATISFIED"
                     async for chunk in stream:
                         if(chunk.delta and chunk.delta.content):
                             response += chunk.delta.content

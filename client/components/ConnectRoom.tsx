@@ -15,7 +15,6 @@ export default function ConnectRoom({
   useEffect(() => {
     if (token || !metadata) return;
     const q = metadata ? `?metadata=${encodeURIComponent(JSON.stringify(metadata))}` : '';
-    console.log("metadata in connect room", q)
     fetch(`/api/token${q}`)
       .then((res) => {
         console.log('LiveKitProvider: Response received', res.status);

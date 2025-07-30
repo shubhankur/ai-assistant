@@ -7,10 +7,14 @@ async def api_get(path: str):
     url = f"{SERVER_URL.rstrip('/')}/{path.lstrip('/')}"
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as resp:
-            return resp
+            # Read the response data before closing the connection
+            data = await resp.json()
+            return resp, data
 
 async def api_post(path: str, data: dict):
     url = f"{SERVER_URL.rstrip('/')}/{path.lstrip('/')}"
     async with aiohttp.ClientSession() as session:
         async with session.post(url, json=data) as resp:
-            return resp
+            # Read the response data before closing the connection
+            response_data = await resp.json()
+            return resp, response_data

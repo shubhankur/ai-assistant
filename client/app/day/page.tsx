@@ -38,19 +38,6 @@ export interface DayPlan {
    • 30‑Min View → renders <DailyTimeline />   (editable timeline)
    ======================================================================= */
 
-const sample = {
-    "date" : "07-26-2025",
-    "blocks": [
-        { start: "07:00", end: "07:30", name: "Meditation", category: "relax" },
-        { start: "07:30", end: "08:00", name: "Breakfast", category: "routine" },
-        { start: "09:00", end: "12:00", name: "Client Work", category: "work" },
-        { start: "12:00", end: "13:00", name: "Lunch", category: "routine" },
-        { start: "13:00", end: "17:00", name: "Client Work", category: "work" },
-        { start: "18:00", end: "19:00", name: "Gym Workout", category: "workout" },
-        { start: "22:30", end: "07:00+1", name: "Sleep", category: "sleep" }
-    ]
-}
-
 export default function DailyPage() {
   const [tab, setTab] = useState<"quick" | "timeline">("quick");
   const [plan, setPlan] = useState<DayPlan | null>(null);
@@ -71,13 +58,24 @@ export default function DailyPage() {
         const p = await res.json();
         setPlan(p);
       } else {
-        setStartAgent(true);
+        const dailyPlanFromSessionStorage = sessionStorage.getItem("currentPlan")
+        if(dailyPlanFromSessionStorage) {
+          setPlan(JSON.parse(dailyPlanFromSessionStorage))
+        } else {
+          setStartAgent(true);
+        }
       }
     }
     fetchPlan();
   }, []);
 
-  const displayPlan = plan || sample; //ToDO: Remove Sample, its just for now to test easily
+  if(!plan){
+    return (
+      <div>
+        No Plan Received
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-black text-gray-100 p-6 space-y-6">
@@ -101,7 +99,7 @@ export default function DailyPage() {
       </div>
 
       {/* view */}
-      {tab === "quick" ? <DailyQuickView {...displayPlan} startAgent={startAgent} /> : <DailyPlan {...displayPlan}/>}
+      {tab === "quick" ? <DailyQuickView {...plan} /> : <DailyPlan {...plan}/>}
     </div>
   );
 }
