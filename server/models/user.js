@@ -12,7 +12,6 @@ const UserSchema = new mongoose.Schema({
   occupation: String,
   verificationCode: String,
   verification_code_expiry: Date,
-  resetCode: String,
   stage: { type: Number, default: 1 },
   created_at: { type: Date, default: Date.now },
 });

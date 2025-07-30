@@ -27,6 +27,22 @@ function decrypt(data) {
   return dec.toString();
 }
 
+async function send_verification_email(to, code) {
+  const msg = {
+    to: to,
+    from: process.env.SMTP_USER,
+    subject: 'Verify your account',
+    text: `Your verification code is ${code}`,
+  };
+  
+  try {
+    await sgMail.send(msg);
+    console.log('Email sent');
+  } catch (error) {
+    console.error('Email sending error:', error);
+  }
+}
+
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -45,18 +61,9 @@ router.post('/login', async (req, res) => {
           code = Math.floor(100000 + Math.random() * 900000).toString();
           user.verificationCode = code;
           user.verification_code_expiry = Date.now() + 10 * 60 * 1000;
+          await send_verification_email(email, code);
         }
         await user.save();
-        const msg = {
-          to: email,
-          from: process.env.SMTP_USER,
-          subject: 'Verify your account',
-          text: `Your verification code is ${code}`,
-        };
-        sgMail
-          .send(msg)
-          .then(() => { console.log('Email sent'); })
-          .catch((error) => { console.error(error); });
         res.cookie('user', encrypt(String(user._id)), { httpOnly: true });
         return res.json({ message: 'verification_required' });
       }
@@ -73,21 +80,7 @@ router.post('/login', async (req, res) => {
       verification_code_expiry: Date.now() + 10 * 60 * 1000,
     });
     console.log('User created', user._id);
-    const msg = {
-      to: email, // Change to your recipient
-      from: process.env.SMTP_USER, // Change to your verified sender
-      subject: 'Verify your account',
-      text: `Your verification code is ${code}`,
-    };
-
-    sgMail
-      .send(msg)
-      .then(() => {
-        console.log('Email sent');
-      })
-      .catch((error) => {
-        console.error(error);
-      });
+    await send_verification_email(email, code);
     res.cookie('user', encrypt(String(user._id)), { httpOnly: true });
     res.json({ message: 'verification_required' });
   } catch (err) {
@@ -134,18 +127,13 @@ router.post('/forgot', async (req, res) => {
       console.warn('Forgot password - user not found:', email);
       return res.status(404).json({ error: 'User not found' });
     }
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    user.resetCode = code;
-    await user.save();
-    try {
-      await transporter.sendMail({
-        from: process.env.SMTP_FROM || process.env.SMTP_USER,
-        to: email,
-        subject: 'Password reset code',
-        text: `Your password reset code is ${code}`,
-      });
-    } catch (e) {
-      console.error('Mail error', e);
+    let code = user.verificationCode;
+    if (!code || !user.verification_code_expiry || user.verification_code_expiry < Date.now()) {
+      code = Math.floor(100000 + Math.random() * 900000).toString();
+      user.verificationCode = code;
+      user.verification_code_expiry = Date.now() + 10 * 60 * 1000;
+      await user.save();
+      await send_verification_email(email, code);
     }
     res.json({ message: 'reset_code_sent' });
   } catch (err) {
@@ -162,9 +150,9 @@ router.post('/reset', async (req, res) => {
       console.warn('Reset password - user not found:', email);
       return res.status(404).json({ error: 'User not found' });
     }
-    if (user.resetCode !== code) return res.status(400).json({ error: 'Invalid code' });
+    if (user.verificationCode !== code) return res.status(400).json({ error: 'Invalid code' });
     user.password = password;
-    user.resetCode = undefined;
+    user.verificationCode = undefined;
     await user.save();
     res.cookie('user', encrypt(String(user._id)), { httpOnly: true });
     res.json({ message: 'password_reset', stage: user.stage, id: user._id, name: user.name, email: user.email });
@@ -252,17 +240,8 @@ router.post('/resend-code', async (req, res) => {
       user.verificationCode = code;
       user.verification_code_expiry = Date.now() + 10 * 60 * 1000;
       await user.save();
+      await send_verification_email(user.email, code);
     }
-    const msg = {
-      to: user.email,
-      from: process.env.SMTP_USER,
-      subject: 'Verify your account',
-      text: `Your verification code is ${code}`,
-    };
-    sgMail
-      .send(msg)
-      .then(() => { console.log('Email sent'); })
-      .catch((error) => { console.error(error); });
     res.json({ message: 'verification_sent' });
   } catch (err) {
     console.error('resend-code error:', err);
