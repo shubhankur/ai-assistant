@@ -1,5 +1,6 @@
 'use client'
 import React, { useState, useEffect } from "react";
+import { SERVER_URL } from '@/utils/constants';
 import { DailyPlan } from "@/components/DailyPlan"; // adjust relative path as needed
 import { DailyQuickView } from "@/components/DailyQuickView";   // assumes DailyPlanView component exists
 
@@ -57,11 +58,15 @@ export default function DailyPage() {
 
   useEffect(() => {
     async function fetchPlan() {
-      const ures = await fetch('http://localhost:5005/auth/validate', { credentials: 'include' });
-      if (!ures.ok) { window.location.assign('/'); return; }
+      const ures = await fetch(`${SERVER_URL}/auth/validate`, { credentials: 'include' });
+      if (!ures.ok) { window.location.assign('/login'); return; }
       const user = await ures.json();
+      if(!user.verified){
+        window.location.assign('/login?verify=1');
+        return;
+      }
       const today = new Date().toLocaleDateString();
-      const res = await fetch(`http://localhost:5005/dailyPlans?userid=${user.id}&date=${encodeURIComponent(today)}`);
+      const res = await fetch(`${SERVER_URL}/dailyPlans?userid=${user.id}&date=${encodeURIComponent(today)}`);
       if (res.ok) {
         const p = await res.json();
         setPlan(p);

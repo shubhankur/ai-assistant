@@ -1,6 +1,8 @@
+import { SERVER_URL } from './constants';
+
 export const updateStageAtDB = async (stageNum : Number) => {
     try {
-        const response = await fetch('http://localhost:5005/users/stage/update', {
+        const response = await fetch(`${SERVER_URL}/users/stage/update`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',

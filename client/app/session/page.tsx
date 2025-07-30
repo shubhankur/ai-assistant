@@ -5,6 +5,7 @@ import { LoadingView } from '@/components/LoadingView';
 import { SessionAgent } from '@/components/SessionAgent';
 import Intro from '@/components/Intro';
 import { updateStageAtDB } from '@/utils/serverApis';
+import { SERVER_URL } from '@/utils/constants';
 
 export interface Metadata {
   stage:string,
@@ -32,11 +33,15 @@ export default function SessionPage() {
   useEffect(() => {
     async function init() {
         if (typeof window === 'undefined') return;
-        const userRes = await fetch('http://localhost:5005/auth/validate', { credentials: 'include' });
+        const userRes = await fetch(`${SERVER_URL}/auth/validate`, { credentials: 'include' });
         if (!userRes.ok) { 
-          window.location.assign('/'); return; 
+          window.location.assign('/login'); return; 
         }
         const user = await userRes.json();
+        if(!user.verified){
+          window.location.assign('/login?verify=1');
+          return;
+        }
         if(user.stage && user.stage != 1) {
           window.location.assign('/day'); return; 
         }

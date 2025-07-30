@@ -72,7 +72,11 @@ export function SessionAgent() {
           <div className='flex justify-center'>
             <VoiceControlBar/>
             <Button variant="outline" className='bg-blue-600 ml-2'
-              onClick={() => updateStage(-1)}
+              onClick={() => {
+                updateStage(-1)
+                window.location.assign('/day')
+                return
+              }}
             >
               Skip
             </Button>

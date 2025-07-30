@@ -27,6 +27,22 @@ function decrypt(data) {
   return dec.toString();
 }
 
+async function send_verification_email(to, code) {
+  const msg = {
+    to: to,
+    from: process.env.SMTP_USER,
+    subject: 'Verify your account',
+    text: `Your verification code is ${code}`,
+  };
+  
+  try {
+    await sgMail.send(msg);
+    console.log('Email sent');
+  } catch (error) {
+    console.error('Email sending error:', error);
+  }
+}
+
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -36,49 +52,69 @@ router.post('/login', async (req, res) => {
     let user = await User.findOne({ email });
     if (user) {
       if (user.password !== password) {
+        console.warn('Login wrong password for', email);
         return res.status(401).json({ error: 'Wrong password' });
+      }
+      if (!user.verified) {
+        let code = user.verificationCode;
+        if (!code || !user.verification_code_expiry || user.verification_code_expiry < Date.now()) {
+          code = Math.floor(100000 + Math.random() * 900000).toString();
+          user.verificationCode = code;
+          user.verification_code_expiry = Date.now() + 10 * 60 * 1000;
+          await send_verification_email(email, code);
+        }
+        await user.save();
+        res.cookie('user', encrypt(String(user._id)), { httpOnly: true });
+        return res.json({ message: 'verification_required' });
       }
       res.cookie('user', encrypt(String(user._id)), { httpOnly: true });
       return res.json(user);
     }
     const name = email.split('@')[0];
     const code = Math.floor(100000 + Math.random() * 900000).toString();
-    user = await User.create({ email, password, name, verificationCode: code });
-    const msg = {
-      to: email, // Change to your recipient
-      from: process.env.SMTP_USER, // Change to your verified sender
-      subject: 'Verify your account',
-      text: `Your verification code is ${code}`,
-    }
-
-    sgMail
-      .send(msg)
-      .then(() => {
-        console.log('Email sent')
-      })
-      .catch((error) => {
-        console.error(error)
-      })
+    user = await User.create({
+      email,
+      password,
+      name,
+      verificationCode: code,
+      verification_code_expiry: Date.now() + 10 * 60 * 1000,
+    });
+    console.log('User created', user._id);
+    await send_verification_email(email, code);
+    res.cookie('user', encrypt(String(user._id)), { httpOnly: true });
     res.json({ message: 'verification_required' });
   } catch (err) {
+    console.error('Login error:', err);
     res.status(400).json({ error: err.message });
   }
 });
 
 router.post('/verify', async (req, res) => {
   try {
-    const { email, code } = req.body;
-    const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ error: 'User not found' });
+    const { code } = req.body;
+    const parsed = req.headers.cookie ? cookieParser.parse(req.headers.cookie) : {};
+    const cookie = parsed.user;
+    if (!cookie) return res.status(401).json({ error: 'No cookie' });
+    const id = decrypt(cookie);
+    const user = await User.findById(id);
+    if (!user) {
+      console.warn('Verify failed - user not found:', id);
+      return res.status(404).json({ error: 'User not found' });
+    }
+    if (user.verification_code_expiry && user.verification_code_expiry < Date.now()) {
+      return res.status(400).json({ error: 'Code expired' });
+    }
     if (user.verificationCode !== code) {
       return res.status(400).json({ error: 'Invalid code' });
     }
     user.verified = true;
     user.verificationCode = undefined;
+    user.verification_code_expiry = undefined;
     await user.save();
     res.cookie('user', encrypt(String(user._id)), { httpOnly: true });
     res.json({ message: 'verified', stage: user.stage, id: user._id, name: user.name, email: user.email });
   } catch (err) {
+    console.error('Verify error:', err);
     res.status(400).json({ error: err.message });
   }
 });
@@ -87,22 +123,21 @@ router.post('/forgot', async (req, res) => {
   try {
     const { email } = req.body;
     const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    user.resetCode = code;
-    await user.save();
-    try {
-      await transporter.sendMail({
-        from: process.env.SMTP_FROM || process.env.SMTP_USER,
-        to: email,
-        subject: 'Password reset code',
-        text: `Your password reset code is ${code}`,
-      });
-    } catch (e) {
-      console.error('Mail error', e);
+    if (!user) {
+      console.warn('Forgot password - user not found:', email);
+      return res.status(404).json({ error: 'User not found' });
+    }
+    let code = user.verificationCode;
+    if (!code || !user.verification_code_expiry || user.verification_code_expiry < Date.now()) {
+      code = Math.floor(100000 + Math.random() * 900000).toString();
+      user.verificationCode = code;
+      user.verification_code_expiry = Date.now() + 10 * 60 * 1000;
+      await user.save();
+      await send_verification_email(email, code);
     }
     res.json({ message: 'reset_code_sent' });
   } catch (err) {
+    console.error('Forgot password error:', err);
     res.status(400).json({ error: err.message });
   }
 });
@@ -111,14 +146,18 @@ router.post('/reset', async (req, res) => {
   try {
     const { email, code, password } = req.body;
     const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    if (user.resetCode !== code) return res.status(400).json({ error: 'Invalid code' });
+    if (!user) {
+      console.warn('Reset password - user not found:', email);
+      return res.status(404).json({ error: 'User not found' });
+    }
+    if (user.verificationCode !== code) return res.status(400).json({ error: 'Invalid code' });
     user.password = password;
-    user.resetCode = undefined;
+    user.verificationCode = undefined;
     await user.save();
     res.cookie('user', encrypt(String(user._id)), { httpOnly: true });
     res.json({ message: 'password_reset', stage: user.stage, id: user._id, name: user.name, email: user.email });
   } catch (err) {
+    console.error('Reset password error:', err);
     res.status(400).json({ error: err.message });
   }
 });
@@ -137,6 +176,7 @@ router.post('/google', async (req, res) => {
     res.cookie('user', encrypt(String(user._id)), { httpOnly: true });
     res.json(user);
   } catch (err) {
+    console.error('Google auth error:', err);
     res.status(400).json({ error: 'Google auth failed' });
   }
 });
@@ -148,9 +188,13 @@ router.get('/validate', async (req, res) => {
     if (!cookie) return res.status(401).json({ error: 'No cookie' });
     const id = decrypt(cookie);
     const user = await User.findById(id);
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    res.json({ id: user._id, name: user.name, email: user.email, stage: user.stage });
+    if (!user) {
+      console.warn('Validate - user not found:', id);
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json({ id: user._id, name: user.name, email: user.email, stage: user.stage, verified: user.verified });
   } catch (err) {
+    console.error('Validate error:', err);
     res.status(400).json({ error: 'Invalid cookie' });
   }
 });
@@ -161,6 +205,7 @@ router.get('/verify-user/:id', async (req, res) => {
     const userId = req.params.id;
     const user = await User.findById(userId);
     if (!user) {
+      console.warn('verify-user: no user for id', userId);
       return res.status(404).json({ error: 'User not found' });
     }
     res.json({ 
@@ -171,6 +216,35 @@ router.get('/verify-user/:id', async (req, res) => {
       stage: user.stage 
     });
   } catch (err) {
+    console.error('verify-user error:', err);
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.post('/resend-code', async (req, res) => {
+  try {
+    const parsed = req.headers.cookie ? cookieParser.parse(req.headers.cookie) : {};
+    const cookie = parsed.user;
+    if (!cookie) return res.status(401).json({ error: 'No cookie' });
+    const id = decrypt(cookie);
+    const user = await User.findById(id);
+    if (!user) {
+      console.warn('resend-code: no user for id', id);
+      return res.status(404).json({ error: 'User not found' });
+    }
+    if (user.verified) return res.json({ message: 'already_verified' });
+
+    let code = user.verificationCode;
+    if (!code || !user.verification_code_expiry || user.verification_code_expiry < Date.now()) {
+      code = Math.floor(100000 + Math.random() * 900000).toString();
+      user.verificationCode = code;
+      user.verification_code_expiry = Date.now() + 10 * 60 * 1000;
+      await user.save();
+      await send_verification_email(user.email, code);
+    }
+    res.json({ message: 'verification_sent' });
+  } catch (err) {
+    console.error('resend-code error:', err);
     res.status(400).json({ error: err.message });
   }
 });
