@@ -14,8 +14,8 @@ from dotenv import load_dotenv
 from onboarding_prompts import ONBOARDING_PROMPTS
 import json
 import asyncio
-import aiohttp
 import os
+from .http_utils import api_get
 load_dotenv('.env', override=True)
 
 def createSession() -> AgentSession :
@@ -53,22 +53,19 @@ async def verify_user_exists(user_id: str) -> bool:
     Returns:
         bool: True if user exists, False otherwise
     """
-    server_url = os.getenv('SERVER_URL', 'http://localhost:5005')
-    url = f"{server_url}/auth/verify-user/{user_id}"
-    
+    url = f"auth/verify-user/{user_id}"
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as response:
-                if response.status == 200:
-                    user_data = await response.json()
-                    print(f"User {user_id} verified successfully: {user_data.get('name', 'Unknown')}")
-                    return True
-                elif response.status == 404:
-                    print(f"User {user_id} not found")
-                    return False
-                else:
-                    print(f"Error verifying user {user_id}: HTTP {response.status}")
-                    return False
+        response = await api_get(url)
+        if response.status == 200:
+            user_data = await response.json()
+            print(f"User {user_id} verified successfully: {user_data.get('name', 'Unknown')}")
+            return True
+        elif response.status == 404:
+            print(f"User {user_id} not found")
+            return False
+        else:
+            print(f"Error verifying user {user_id}: HTTP {response.status}")
+            return False
     except Exception as e:
         print(f"Failed to verify user {user_id}: {str(e)}")
         return False

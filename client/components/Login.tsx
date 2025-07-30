@@ -1,16 +1,24 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { GoogleLogin, GoogleOAuthProvider, PromptMomentNotification } from '@react-oauth/google';
+import { SERVER_URL } from '@/utils/constants';
 
 const passwordRegex = /^(?=[A-Za-z])(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*\-_])[A-Za-z\d!@#$%^&*\-_]{10,}$/;
 
-export function Login() {
+export function Login({ initialVerify = false }: { initialVerify?: boolean } = {}) {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const [googleLoading, setGoogleLoading] = useState(false);
-    const [verifying, setVerifying] = useState(false);
+    const [verifying, setVerifying] = useState(initialVerify);
     const [verifyCode, setVerifyCode] = useState("");
+
+    useEffect(() => {
+      if (initialVerify) {
+        const storedEmail = localStorage.getItem('verificationEmail');
+        if (storedEmail) setEmail(storedEmail);
+      }
+    }, [initialVerify]);
 
     const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
@@ -19,7 +27,7 @@ export function Login() {
         return;
       }
       setLoading(true);
-      const res = await fetch("http://localhost:5005/auth/login", {
+      const res = await fetch(`${SERVER_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -32,7 +40,8 @@ export function Login() {
         return;
       }
       if (data.message === "verification_required") {
-        setVerifying(true);
+        localStorage.setItem('verificationEmail', email);
+        window.location.assign('/?verify=1');
         setLoading(false);
         return;
       }
@@ -45,7 +54,7 @@ export function Login() {
     const handleForgot = async () => {
       const em = prompt("Enter your email");
       if (!em) return;
-      const fr = await fetch("http://localhost:5005/auth/forgot", {
+      const fr = await fetch(`${SERVER_URL}/auth/forgot`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: em }),
@@ -55,7 +64,7 @@ export function Login() {
       const code = prompt("Enter code sent to your email");
       const newPass = prompt("Enter new password");
       if (!code || !newPass) return;
-      await fetch("http://localhost:5005/auth/reset", {
+      await fetch(`${SERVER_URL}/auth/reset`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: em, code, password: newPass }),
@@ -65,7 +74,7 @@ export function Login() {
     };
 
     const handleVerify = async () => {
-      const vr = await fetch("http://localhost:5005/auth/verify", {
+      const vr = await fetch(`${SERVER_URL}/auth/verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, code: verifyCode }),
@@ -132,7 +141,7 @@ export function Login() {
                     const token = cred.credential;
                     if (!token) return;
                     setGoogleLoading(true);
-                    const res = await fetch('http://localhost:5005/auth/google', {
+                    const res = await fetch(`${SERVER_URL}/auth/google`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ token }),

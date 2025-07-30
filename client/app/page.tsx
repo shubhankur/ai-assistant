@@ -3,6 +3,7 @@ import Hello from "@/components/Hello";
 import { LoadingView } from "@/components/LoadingView";
 import { Login } from "@/components/Login";
 import { useEffect, useState } from "react";
+import { SERVER_URL } from '@/utils/constants';
 import { TypeAnimation } from 'react-type-animation';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -10,10 +11,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 export default function Home(){
   const [showLogin, setShowLogin] = useState(false)
   const [centerMessage, setCenterMessage] = useState("take a deeep breath")
+  const [verify, setVerify] = useState(false)
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if(params.get('verify') === '1') {
+      setVerify(true)
+      setShowLogin(true)
+    }
     async function fetchUser() {
       try {
-        const res = await fetch('http://localhost:5005/auth/validate', { credentials: 'include' })
+        const res = await fetch(`${SERVER_URL}/auth/validate`, { credentials: 'include' })
         if (res.ok) {
           const u = await res.json()
           setTimeout(()=>{
@@ -40,8 +47,9 @@ export default function Home(){
         const visitor = localStorage.getItem("visitor_id");
         if (!visitor) {
           localStorage.setItem("visitor_id", Math.floor(100000 + Math.random() * 900000).toString())
-        } 
+        }
         setShowLogin(true)
+        if(verify) setVerify(true)
         setCenterMessage("take a few deep breaths");
       }
     }
@@ -119,7 +127,7 @@ export default function Home(){
               </svg>
             </motion.div>
             
-            <Login/>
+            <Login initialVerify={verify}/>
           </motion.div>
         )}
       </AnimatePresence>

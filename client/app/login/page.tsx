@@ -3,13 +3,17 @@ import { Login } from '@/components/Login';
 import Hello from '../../components/Hello';
 import { TypeAnimation } from 'react-type-animation';
 import { useEffect, useState } from 'react';
+import { SERVER_URL } from '@/utils/constants';
 
 export default function Home() {
   const [showHelperDiv, setShowHelperDiv] = useState(false);
+  const [verify, setVerify] = useState(false);
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if(params.get('verify') === '1') setVerify(true);
     async function fetchUser() {
       try {
-        const res = await fetch('http://localhost:5005/auth/validate', { credentials: 'include' })
+        const res = await fetch(`${SERVER_URL}/auth/validate`, { credentials: 'include' })
         if (res.ok) {
           const u = await res.json()
           window.location.assign('/day')
@@ -48,7 +52,7 @@ export default function Home() {
           />
         </div>
       )}
-      <Login/>
+      <Login initialVerify={verify}/>
     </div>
   );
 }

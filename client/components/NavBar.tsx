@@ -1,6 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
+import { SERVER_URL } from '@/utils/constants'
 
 export default function NavBar() {
   const [name, setName] = useState<string>('')
@@ -9,7 +10,7 @@ export default function NavBar() {
   useEffect(() => {
     async function fetchUser() {
       try {
-        const res = await fetch('http://localhost:5005/auth/validate', { credentials: 'include' })
+        const res = await fetch(`${SERVER_URL}/auth/validate`, { credentials: 'include' })
         if (res.ok) {
           const u = await res.json()
           setName(u.name)
@@ -22,7 +23,7 @@ export default function NavBar() {
   }, [])
 
   const handleSignOut = async () => {
-    await fetch('http://localhost:5005/auth/logout', { method: 'POST', credentials: 'include' })
+    await fetch(`${SERVER_URL}/auth/logout`, { method: 'POST', credentials: 'include' })
     window.location.assign('/')
   }
 
@@ -32,7 +33,7 @@ export default function NavBar() {
       <button className="lg:hidden" onClick={() => setOpen(!open)}>
         &#9776;
       </button>
-      <ul className={`lg:flex gap-4 ${open ? 'block' : 'hidden'} lg:static lg:bg-transparent absolute right-4 top-full bg-black rounded-md py-2`}>
+      <ul className={`lg:flex gap-4 overflow-hidden transition-all duration-500 ${open ? 'max-h-60' : 'max-h-0'} lg:max-h-full lg:block lg:static lg:bg-transparent absolute right-4 top-full bg-black rounded-md py-2`} style={{display: open ? 'block' : 'none'}}>
         {name && <li className="px-4 py-2 border-b lg:border-none">{name}</li>}
         <li className="px-4 py-2 lg:p-0"><Link href="/about">About</Link></li>
         <li className="px-4 py-2 lg:p-0"><Link href="/privacy">Privacy Policy</Link></li>

@@ -38,6 +38,22 @@ router.post('/login', async (req, res) => {
       if (user.password !== password) {
         return res.status(401).json({ error: 'Wrong password' });
       }
+      if (!user.verified) {
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
+        user.verificationCode = code;
+        await user.save();
+        const msg = {
+          to: email,
+          from: process.env.SMTP_USER,
+          subject: 'Verify your account',
+          text: `Your verification code is ${code}`,
+        };
+        sgMail
+          .send(msg)
+          .then(() => { console.log('Email sent'); })
+          .catch((error) => { console.error(error); });
+        return res.json({ message: 'verification_required' });
+      }
       res.cookie('user', encrypt(String(user._id)), { httpOnly: true });
       return res.json(user);
     }
@@ -149,7 +165,7 @@ router.get('/validate', async (req, res) => {
     const id = decrypt(cookie);
     const user = await User.findById(id);
     if (!user) return res.status(404).json({ error: 'User not found' });
-    res.json({ id: user._id, name: user.name, email: user.email, stage: user.stage });
+    res.json({ id: user._id, name: user.name, email: user.email, stage: user.stage, verified: user.verified });
   } catch (err) {
     res.status(400).json({ error: 'Invalid cookie' });
   }
@@ -170,6 +186,31 @@ router.get('/verify-user/:id', async (req, res) => {
       email: user.email, 
       stage: user.stage 
     });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.post('/resend-code', async (req, res) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (user.verified) return res.json({ message: 'already_verified' });
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    user.verificationCode = code;
+    await user.save();
+    const msg = {
+      to: email,
+      from: process.env.SMTP_USER,
+      subject: 'Verify your account',
+      text: `Your verification code is ${code}`,
+    };
+    sgMail
+      .send(msg)
+      .then(() => { console.log('Email sent'); })
+      .catch((error) => { console.error(error); });
+    res.json({ message: 'verification_sent' });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
