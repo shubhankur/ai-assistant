@@ -39,8 +39,12 @@ router.post('/login', async (req, res) => {
         return res.status(401).json({ error: 'Wrong password' });
       }
       if (!user.verified) {
-        const code = Math.floor(100000 + Math.random() * 900000).toString();
-        user.verificationCode = code;
+        let code = user.verificationCode;
+        if (!code || !user.verification_code_expiry || user.verification_code_expiry < Date.now()) {
+          code = Math.floor(100000 + Math.random() * 900000).toString();
+          user.verificationCode = code;
+          user.verification_code_expiry = Date.now() + 10 * 60 * 1000;
+        }
         await user.save();
         const msg = {
           to: email,
@@ -52,6 +56,7 @@ router.post('/login', async (req, res) => {
           .send(msg)
           .then(() => { console.log('Email sent'); })
           .catch((error) => { console.error(error); });
+        res.cookie('user', encrypt(String(user._id)), { httpOnly: true });
         return res.json({ message: 'verification_required' });
       }
       res.cookie('user', encrypt(String(user._id)), { httpOnly: true });
@@ -59,22 +64,29 @@ router.post('/login', async (req, res) => {
     }
     const name = email.split('@')[0];
     const code = Math.floor(100000 + Math.random() * 900000).toString();
-    user = await User.create({ email, password, name, verificationCode: code });
+    user = await User.create({
+      email,
+      password,
+      name,
+      verificationCode: code,
+      verification_code_expiry: Date.now() + 10 * 60 * 1000,
+    });
     const msg = {
       to: email, // Change to your recipient
       from: process.env.SMTP_USER, // Change to your verified sender
       subject: 'Verify your account',
       text: `Your verification code is ${code}`,
-    }
+    };
 
     sgMail
       .send(msg)
       .then(() => {
-        console.log('Email sent')
+        console.log('Email sent');
       })
       .catch((error) => {
-        console.error(error)
-      })
+        console.error(error);
+      });
+    res.cookie('user', encrypt(String(user._id)), { httpOnly: true });
     res.json({ message: 'verification_required' });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -83,14 +95,22 @@ router.post('/login', async (req, res) => {
 
 router.post('/verify', async (req, res) => {
   try {
-    const { email, code } = req.body;
-    const user = await User.findOne({ email });
+    const { code } = req.body;
+    const parsed = req.headers.cookie ? cookieParser.parse(req.headers.cookie) : {};
+    const cookie = parsed.user;
+    if (!cookie) return res.status(401).json({ error: 'No cookie' });
+    const id = decrypt(cookie);
+    const user = await User.findById(id);
     if (!user) return res.status(404).json({ error: 'User not found' });
+    if (user.verification_code_expiry && user.verification_code_expiry < Date.now()) {
+      return res.status(400).json({ error: 'Code expired' });
+    }
     if (user.verificationCode !== code) {
       return res.status(400).json({ error: 'Invalid code' });
     }
     user.verified = true;
     user.verificationCode = undefined;
+    user.verification_code_expiry = undefined;
     await user.save();
     res.cookie('user', encrypt(String(user._id)), { httpOnly: true });
     res.json({ message: 'verified', stage: user.stage, id: user._id, name: user.name, email: user.email });
@@ -193,15 +213,23 @@ router.get('/verify-user/:id', async (req, res) => {
 
 router.post('/resend-code', async (req, res) => {
   try {
-    const { email } = req.body;
-    const user = await User.findOne({ email });
+    const parsed = req.headers.cookie ? cookieParser.parse(req.headers.cookie) : {};
+    const cookie = parsed.user;
+    if (!cookie) return res.status(401).json({ error: 'No cookie' });
+    const id = decrypt(cookie);
+    const user = await User.findById(id);
     if (!user) return res.status(404).json({ error: 'User not found' });
     if (user.verified) return res.json({ message: 'already_verified' });
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    user.verificationCode = code;
-    await user.save();
+
+    let code = user.verificationCode;
+    if (!code || !user.verification_code_expiry || user.verification_code_expiry < Date.now()) {
+      code = Math.floor(100000 + Math.random() * 900000).toString();
+      user.verificationCode = code;
+      user.verification_code_expiry = Date.now() + 10 * 60 * 1000;
+      await user.save();
+    }
     const msg = {
-      to: email,
+      to: user.email,
       from: process.env.SMTP_USER,
       subject: 'Verify your account',
       text: `Your verification code is ${code}`,

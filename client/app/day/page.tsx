@@ -62,12 +62,7 @@ export default function DailyPage() {
       if (!ures.ok) { window.location.assign('/'); return; }
       const user = await ures.json();
       if(!user.verified){
-        await fetch(`${SERVER_URL}/auth/resend-code`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: user.email })
-        });
-        localStorage.setItem('verificationEmail', user.email);
+        await fetch(`${SERVER_URL}/auth/resend-code`, { method: 'POST', credentials: 'include' });
         window.location.assign('/?verify=1');
         return;
       }

@@ -12,11 +12,26 @@ export function Login({ initialVerify = false }: { initialVerify?: boolean } = {
     const [googleLoading, setGoogleLoading] = useState(false);
     const [verifying, setVerifying] = useState(initialVerify);
     const [verifyCode, setVerifyCode] = useState("");
+    const [codeExpired, setCodeExpired] = useState(false);
+    const [forgotStage, setForgotStage] = useState<0 | 1 | 2>(0);
+    const [forgotEmail, setForgotEmail] = useState("");
+    const [forgotCode, setForgotCode] = useState("");
+    const [forgotPass, setForgotPass] = useState("");
 
     useEffect(() => {
       if (initialVerify) {
-        const storedEmail = localStorage.getItem('verificationEmail');
-        if (storedEmail) setEmail(storedEmail);
+        (async () => {
+          try {
+            const res = await fetch(`${SERVER_URL}/auth/validate`, { credentials: 'include' });
+            if (res.ok) {
+              const u = await res.json();
+              setEmail(u.email);
+              setVerifying(true);
+            }
+          } catch {
+            /* ignore */
+          }
+        })();
       }
     }, [initialVerify]);
 
@@ -40,7 +55,6 @@ export function Login({ initialVerify = false }: { initialVerify?: boolean } = {
         return;
       }
       if (data.message === "verification_required") {
-        localStorage.setItem('verificationEmail', email);
         window.location.assign('/?verify=1');
         setLoading(false);
         return;
@@ -51,38 +65,44 @@ export function Login({ initialVerify = false }: { initialVerify?: boolean } = {
       else if (stage === 5) window.location.assign('/day');
     };
 
-    const handleForgot = async () => {
-      const em = prompt("Enter your email");
-      if (!em) return;
+    const handleForgot = () => {
+      setForgotStage(1);
+    };
+
+    const sendForgot = async () => {
       const fr = await fetch(`${SERVER_URL}/auth/forgot`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: em }),
+        body: JSON.stringify({ email: forgotEmail }),
         credentials: 'include',
       });
-      const fd = await fr.json();
-      const code = prompt("Enter code sent to your email");
-      const newPass = prompt("Enter new password");
-      if (!code || !newPass) return;
-      await fetch(`${SERVER_URL}/auth/reset`, {
+      if (fr.ok) setForgotStage(2); else setError('Email not found');
+    };
+
+    const handleReset = async () => {
+      const rr = await fetch(`${SERVER_URL}/auth/reset`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: em, code, password: newPass }),
+        body: JSON.stringify({ email: forgotEmail, code: forgotCode, password: forgotPass }),
         credentials: 'include',
       });
-      window.location.assign("/session");
+      if (rr.ok) { window.location.assign('/session'); }
     };
 
     const handleVerify = async () => {
       const vr = await fetch(`${SERVER_URL}/auth/verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, code: verifyCode }),
+        body: JSON.stringify({ code: verifyCode }),
         credentials: 'include',
       });
       const data = await vr.json();
       if (!vr.ok) {
-        setError("Invalid verification code");
+        if (data.error === 'Code expired') {
+          setCodeExpired(true);
+        } else {
+          setError("Invalid verification code");
+        }
         return;
       }
       const stage = data.stage ?? 1;
@@ -177,10 +197,39 @@ export function Login({ initialVerify = false }: { initialVerify?: boolean } = {
                 value={verifyCode}
                 onChange={e => setVerifyCode(e.target.value)}
               />
+              {codeExpired && <p className="text-red-400 text-sm">Code expired. <button className="underline" onClick={async()=>{await fetch(`${SERVER_URL}/auth/resend-code`, {method:'POST', credentials:'include'}); setCodeExpired(false);}}>Resend</button></p>}
               <div className="flex justify-end gap-2">
                 <button className="px-4 py-1 bg-gray-600 rounded" onClick={()=>setVerifying(false)}>Cancel</button>
                 <button className="px-4 py-1 bg-blue-600 rounded" onClick={handleVerify}>Verify</button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {forgotStage > 0 && (
+          <div className="fixed inset-0 bg-black/70 flex items-center justify-center">
+            <div className="bg-gray-800 p-6 rounded-xl space-y-4 w-80">
+              {forgotStage === 1 && (
+                <>
+                  <p className="text-white">Enter your email</p>
+                  <input className="p-2 rounded-md bg-gray-700 text-white focus:outline-none" value={forgotEmail} onChange={e=>setForgotEmail(e.target.value)} />
+                  <div className="flex justify-end gap-2">
+                    <button className="px-4 py-1 bg-gray-600 rounded" onClick={()=>setForgotStage(0)}>Cancel</button>
+                    <button className="px-4 py-1 bg-blue-600 rounded" onClick={sendForgot}>Send Code</button>
+                  </div>
+                </>
+              )}
+              {forgotStage === 2 && (
+                <>
+                  <p className="text-white">Enter code and new password</p>
+                  <input placeholder="Code" className="p-2 rounded-md bg-gray-700 text-white focus:outline-none" value={forgotCode} onChange={e=>setForgotCode(e.target.value)} />
+                  <input placeholder="New password" type="password" className="p-2 rounded-md bg-gray-700 text-white focus:outline-none" value={forgotPass} onChange={e=>setForgotPass(e.target.value)} />
+                  <div className="flex justify-end gap-2">
+                    <button className="px-4 py-1 bg-gray-600 rounded" onClick={()=>setForgotStage(0)}>Cancel</button>
+                    <button className="px-4 py-1 bg-blue-600 rounded" onClick={handleReset}>Reset</button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}
