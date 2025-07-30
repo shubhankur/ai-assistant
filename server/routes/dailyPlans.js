@@ -14,6 +14,23 @@ router.post('/save', async (req, res) => {
   }
 });
 
+router.get('/fetchByDate', async (req, res) => {
+  try {
+    const { date } = req.query;
+    if (!date) {
+      return res.status(400).json({ error: 'date query parameter required' });
+    }
+    const doc = await DailyPlan.findOne({ 
+      userid: req.user._id,
+      date: date,
+    });
+    if (!doc) return res.status(404).json({ error: 'Not found' });
+    res.json(doc);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 router.get('/', async (req, res) => {
   try {
     if (req.query.date) {

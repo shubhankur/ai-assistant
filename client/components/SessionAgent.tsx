@@ -11,9 +11,9 @@ import { updateStageAtDB } from '@/utils/serverApis';
 
 export function SessionAgent() {
     const {state, agentAttributes, audioTrack} = useVoiceAssistant();
-    console.log(state)
     const roomCtx = useRoomContext();
     const stage = Number(agentAttributes?.stage ?? 1);
+    const [prevStage, setPrevStage] = useState(0);
 
     const {textStreams : todayPlanStream} = useTextStream("today_plan");
     const {textStreams : tomorrowPlanStream} = useTextStream("tomorrow_plan");
@@ -45,8 +45,12 @@ export function SessionAgent() {
 
     //update stage at DB
     useEffect(() => {
-      console.log(stage)
-      updateStageAtDB(stage)
+      if(prevStage != stage) {
+        setPrevStage(stage)
+        //ToDo: After stage 5, for some reason teh stage is being updated with value 1
+        console.log("updating stage", stage)
+        updateStageAtDB(stage)
+      }
     }, [stage])
 
     //move to /day
@@ -69,11 +73,14 @@ export function SessionAgent() {
           {/* ToDo; Get device volume when media is being played and use that*/}
           <VolumeWarning volume={1} />
           <AgentVisualizer />
+          <div className="text-white text-center mb-4 py-2 px-4 rounded-lg bg-gray-800/50 backdrop-blur-sm">
+            {state}
+          </div>
           <div className='flex justify-center'>
             <VoiceControlBar/>
             <Button variant="outline" className='bg-blue-600 ml-2'
               onClick={() => {
-                updateStage(-1)
+                updateStage(5)
                 window.location.assign('/day')
                 return
               }}

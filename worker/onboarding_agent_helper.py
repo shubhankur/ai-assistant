@@ -1,9 +1,5 @@
-import tiktoken
-from http_utils import api_post
-import re
+from http_utils import api_post_internal
 import traceback
-from livekit.agents import llm
-from typing import Optional
 
 
 
@@ -19,7 +15,7 @@ async def save_to_server(endpoint: str, data: dict) -> bool:
         bool: True if successful, False otherwise
     """
     try:
-        response = await api_post(endpoint, data)
+        response, _ = await api_post_internal(endpoint, data)
         if response.status != 201:
             print(f"Error saving to {endpoint}: {response.status}")
             response_text = await response.text()

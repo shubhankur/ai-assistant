@@ -11,6 +11,7 @@ const ongoingChanges = require('./routes/ongoingChanges');
 const weeklyRoutines = require('./routes/weeklyRoutines');
 const auth = require('./routes/auth');
 const authMiddleware = require('./middleware/auth');
+const internalRoutes = require('./routes/internal');
 
 const cors = require('cors'); 
 
@@ -18,8 +19,20 @@ const app = express();
 app.use(bodyParser.json());
 app.use(cors({ origin: true, credentials: true }));
 
+// Add simple request/response logging middleware for all routes
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} - request received`);
+  res.on('finish', () => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} - response sent with status ${res.statusCode}`);
+  });
+  next();
+});
+
 // Public routes (no authentication required)
 app.use('/auth', auth);
+
+// Internal service-to-service routes (API-key auth)
+app.use('/internal', internalRoutes);
 
 // Protected routes (authentication required)
 app.use('/users', authMiddleware, users);

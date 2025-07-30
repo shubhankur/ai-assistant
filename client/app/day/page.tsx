@@ -53,7 +53,9 @@ export default function DailyPage() {
         return;
       }
       const today = new Date().toLocaleDateString();
-      const res = await fetch(`${SERVER_URL}/dailyPlans?userid=${user.id}&date=${encodeURIComponent(today)}`);
+      const res = await fetch(`${SERVER_URL}/dailyPlans?date=${encodeURIComponent(today)}`, {
+        credentials: 'include',
+      });
       if (res.ok) {
         const p = await res.json();
         setPlan(p);
