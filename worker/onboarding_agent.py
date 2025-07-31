@@ -96,6 +96,12 @@ class OnboardingAgent(Agent):
     async def start(self, metadata_json : json) -> None:
         try:
             self.user_id = metadata_json["userId"]
+            #verify participant id
+            for p in self._room.remote_participants.values():
+                if(p.identity != self.user_id):
+                    await self._room.disconnect()
+                    raise Exception("Participant Id should be same as the User Id")
+                
             # day as integer
             day = int(metadata_json["day"])
             if day < 0 or day > 6:
