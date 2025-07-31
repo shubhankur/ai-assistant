@@ -112,7 +112,6 @@ Question sequence
     "stage4_output" : (
         '''
 Capture user's aspirations and desired changes in the JSON schema below:
-"aspirations": {{
   "goals": [],
 
   "lifestyle_changes": [],
@@ -120,7 +119,6 @@ Capture user's aspirations and desired changes in the JSON schema below:
   "activities_to_add": [],
 
   "activities_to_remove": []
-}}
         '''
     ),
 
@@ -194,7 +192,7 @@ Rules
      For example: Breaks between continuous blocks of work/study.
      • Tag these with "targets": "GENERAL".
 3. PRIORITISE
-   • Classify each suggestion as HIGHEST, HIGH, MEDIUM, LOW, or LEAST.
+   • Classify each suggestion as HIGH, MEDIUM, and LOW
      Base on health impact + relevance to the user's stated aims.
 4. OUTPUT FORMAT
    • Return JSON only, omit empty tiers, max 3 suggestions per tier.
@@ -206,10 +204,13 @@ Rules
 Example structure (placeholders only):
 
 {{
-  "HIGHEST": [
+  "HIGH_PRIORITY": [
     {{ "suggestion": "", "reason": "", "targets": "" }}
   ],
-  "HIGH": [
+  "MEDIUM_PRIORITY": [
+    {{ "suggestion": "", "reason": "", "targets": "" }}
+  ],
+  "LOW_PRIORITY": [
     {{ "suggestion": "", "reason": "", "targets": "" }}
   ]
 }}

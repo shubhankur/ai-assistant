@@ -1,6 +1,7 @@
 from http_utils import api_post_internal
 import traceback
-
+import json
+from livekit.agents import llm
 
 
 async def save_to_server(endpoint: str, data: dict) -> bool:
@@ -27,3 +28,11 @@ async def save_to_server(endpoint: str, data: dict) -> bool:
         print(f"Failed to save to {endpoint}: {str(e)}")
         traceback.print_exc()
         return False
+
+def print_list_message(chat_ctx : llm.ChatContext):
+                    # Collect all messages and print once
+    all_messages = []
+    for msg in chat_ctx.items:
+        all_messages.append({"role": msg.role, "content": msg.content})
+        print("Chat context messages before habit reformation:")
+        print(json.dumps(all_messages, indent=2))
