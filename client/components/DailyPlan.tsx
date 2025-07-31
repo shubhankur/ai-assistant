@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { ArrowRight, ArrowDown } from "lucide-react";
 import { v4 as uuid } from "uuid";
-import { Category, DayPlan, Block } from "@/app/day/page";
+import { Category, DayPlan, Block } from "@/app/day/today/page";
 import { stat } from "fs";
 
 /* ------------------------ Style Map ---------------------------------- */

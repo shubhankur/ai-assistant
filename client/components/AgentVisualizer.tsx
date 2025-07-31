@@ -7,7 +7,7 @@ export function AgentVisualizer() {
     const { state: agentState, audioTrack } = useVoiceAssistant();
     return (
       <>
-        <div className="h-[300px] w-full">
+        <div className="h-[200px] w-full">
           <BarVisualizer
             state={agentState}
             barCount={5}
