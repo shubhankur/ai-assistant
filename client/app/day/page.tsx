@@ -52,19 +52,33 @@ export default function DailyPage() {
         window.location.assign('/login?verify=1');
         return;
       }
-      const today = new Date().toLocaleDateString();
-      const res = await fetch(`${SERVER_URL}/dailyPlans?userid=${user.id}&date=${encodeURIComponent(today)}`);
+      const today = new Date().toISOString().split("T")[0];
+      const res = await fetch(`${SERVER_URL}/dailyPlans?date=${encodeURIComponent(today)}`, {
+        credentials: 'include',
+      });
       if (res.ok) {
         const p = await res.json();
         setPlan(p);
       } else {
         const dailyPlanFromSessionStorage = sessionStorage.getItem("currentPlan")
         if(dailyPlanFromSessionStorage) {
-          setPlan(JSON.parse(dailyPlanFromSessionStorage))
-        } else {
+          const tempPlan : DayPlan = JSON.parse(dailyPlanFromSessionStorage)
+          const today = new Date().toISOString().split("T")[0];
+          console.log(today)
+          const tomorrow = new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split("T")[0];
+          console.log(tomorrow)
+          console.log(tempPlan.date)
+          const whichDay = tempPlan.date === today ? 'today' : tempPlan.date === tomorrow ? 'tomorrow' : null;
+          console.log("Day in session storage is ", whichDay)
+          if(whichDay) setPlan(tempPlan)
+          else {
+          //sessionStorage.removeItem("currentPlan")
           setStartAgent(true);
         }
+      } else{
+        setStartAgent(true);
       }
+    }
     }
     fetchPlan();
   }, []);

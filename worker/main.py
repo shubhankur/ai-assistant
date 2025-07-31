@@ -1,6 +1,6 @@
 from livekit import rtc, agents
 from livekit.agents.voice import AgentSession
-from livekit.agents import RoomInputOptions
+from livekit.agents import RoomInputOptions, WorkerOptions
 from livekit.agents.types import APIConnectOptions
 from livekit.agents.voice.agent_session import SessionConnectOptions
 from livekit.plugins import (
@@ -39,7 +39,8 @@ def createSession() -> AgentSession :
         vad=silero.vad.VAD.load(),
         min_endpointing_delay=2,
         allow_interruptions=False,
-        conn_options = session_opts
+        conn_options = session_opts,
+        
     )
     return session
 
@@ -80,6 +81,7 @@ async def entrypoint(ctx: agents.JobContext):
                         # - If self-hosting, omit this parameter
                         # - For telephony applications, use `BVCTelephony` for best results
                         noise_cancellation=noise_cancellation.BVC(), 
+                        close_on_disconnect=False
                     ),
                 )
 
@@ -114,14 +116,12 @@ async def entrypoint(ctx: agents.JobContext):
             if(stage == 1):
                 def participant_attributes_changed_sync(attributes, participant):
                     asyncio.create_task(agent.on_participant_attribute_changed(attributes, participant))
-                def on_room_disconnected_sync(reason):
-                    asyncio.create_task(agent.on_room_disconnected(reason))
                 def on_participant_disconnected_sync(reason):
-                    asyncio.create_task(agent.on_participant_disconnected(reason))
+                    asyncio.create_task(agent.on_shutdown(reason))
                 agent.set_room(ctx.room)
                 ctx.room.on("participant_attributes_changed", participant_attributes_changed_sync)
-                ctx.room.on("disconnected", on_room_disconnected_sync)
-                ctx.room.on("participant_disconnected", on_participant_disconnected_sync)
+                # ctx.room.on("participant_disconnected", on_participant_disconnected_sync)
+                ctx.add_shutdown_callback(agent.on_shutdown)
                 await agent.start(metadataJson)
             elif(stage == 6):
                 new_agent = DayAgent(session)
@@ -130,4 +130,12 @@ async def entrypoint(ctx: agents.JobContext):
             print("Error: Participant identity is none.")
 
 if __name__ == "__main__":
-    agents.cli.run_app(agents.WorkerOptions(entrypoint_fnc=entrypoint))
+    opts = WorkerOptions(
+        entrypoint_fnc = entrypoint,
+        shutdown_process_timeout=300,
+        drain_timeout=1800,
+    )
+    agents.cli.run_app(
+        opts,
+        hot_reload=False
+        )

@@ -45,7 +45,7 @@ export function Login({ initialVerify = false }: { initialVerify?: boolean } = {
       }
       setLoading(false);
       const stage = data.stage ?? 1;
-      if (stage >= 1 && stage < 5) window.location.assign('/session');
+      if (stage == 0 || stage == 1) window.location.assign('/session');
       else if (stage === 5) window.location.assign('/day');
     };
 
@@ -95,7 +95,7 @@ export function Login({ initialVerify = false }: { initialVerify?: boolean } = {
         return;
       }
       const stage = data.stage ?? 1;
-      if (stage == 1) window.location.assign('/session');
+      if (stage == 0 || stage == 1) window.location.assign('/session');
       else window.location.assign('/day');
     };
 
@@ -160,7 +160,7 @@ export function Login({ initialVerify = false }: { initialVerify?: boolean } = {
                     setGoogleLoading(false);
                     if (res.ok) {
                         const stage = data.stage ?? 1;
-                        if (Number(stage) === 1) window.location.assign('/session');
+                        if (stage == 0 || stage ==1) window.location.assign('/session');
                         else window.location.assign('/day');
                     } else {
                         setError('Google auth failed');
@@ -174,7 +174,6 @@ export function Login({ initialVerify = false }: { initialVerify?: boolean } = {
                 type="standard"
                 click_listener={onGoogleClick}
             />
-            {googleLoading && <span className="text-white ml-2">Loading...</span>}
             </div>
         </GoogleOAuthProvider>
         {verifying && (

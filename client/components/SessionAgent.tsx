@@ -11,9 +11,9 @@ import { updateStageAtDB } from '@/utils/serverApis';
 
 export function SessionAgent() {
     const {state, agentAttributes, audioTrack} = useVoiceAssistant();
-    console.log(state)
     const roomCtx = useRoomContext();
-    const stage = Number(agentAttributes?.stage ?? 1);
+    const stage = Number(agentAttributes?.stage);
+    const [prevStage, setPrevStage] = useState(0);
 
     const {textStreams : todayPlanStream} = useTextStream("today_plan");
     const {textStreams : tomorrowPlanStream} = useTextStream("tomorrow_plan");
@@ -25,13 +25,11 @@ export function SessionAgent() {
       if (todayPlanStream.length != 0) {
         const latest = todayPlanStream[todayPlanStream.length - 1].text;
         const parsed : DayPlan = JSON.parse(latest);
-        parsed.date = new Date().toDateString();
         setTodayPlan(parsed);
       }
       else if (tomorrowPlanStream.length != 0) {
         const latest = tomorrowPlanStream[tomorrowPlanStream.length - 1].text;
         const parsed : DayPlan = JSON.parse(latest);
-        parsed.date = new Date(new Date().setDate(new Date().getDate() + 1)).toDateString();
         setTomorrowPlan(parsed);
       }
     }, [todayPlanStream, tomorrowPlanStream]);
@@ -45,13 +43,17 @@ export function SessionAgent() {
 
     //update stage at DB
     useEffect(() => {
-      console.log(stage)
-      updateStageAtDB(stage)
+      if(stage && prevStage != stage) {
+        setPrevStage(stage)
+        //ToDo: After stage 5, for some reason teh stage is being updated with value 1
+        console.log("updating stage", stage)
+        updateStageAtDB(stage)
+      }
     }, [stage])
 
     //move to /day
     useEffect(() => {
-      if (stage === 5) {
+      if (stage == 5) {
         if (todayPlan) {
           sessionStorage.setItem('currentPlan', JSON.stringify(todayPlan));
           window.location.assign('/day');
@@ -69,11 +71,14 @@ export function SessionAgent() {
           {/* ToDo; Get device volume when media is being played and use that*/}
           <VolumeWarning volume={1} />
           <AgentVisualizer />
+          <div className="text-white text-center mb-4 py-2 px-4 rounded-lg bg-gray-800/50 backdrop-blur-sm">
+            {state}
+          </div>
           <div className='flex justify-center'>
             <VoiceControlBar/>
             <Button variant="outline" className='bg-blue-600 ml-2'
               onClick={() => {
-                updateStage(-1)
+                updateStage(5)
                 window.location.assign('/day')
                 return
               }}
