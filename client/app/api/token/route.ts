@@ -12,7 +12,7 @@ export async function GET(req: Request) {
   else return NextResponse.json({ error: 'Missing User Id' }, { status: 500 });
   console.log(metadataStr)
   const identity = id;
-  const roomName = `roomba-${id}`;
+  const roomName = `roomba-${id}}`;
   const apiKey = process.env.LIVEKIT_API_KEY;
   const apiSecret = process.env.LIVEKIT_API_SECRET;
   const serverUrl = process.env.LIVEKIT_URL;
@@ -23,10 +23,17 @@ export async function GET(req: Request) {
 
   /* 1.  Create (or update) the room with metadata */
   const roomSvc = new RoomServiceClient(serverUrl, apiKey, apiSecret);
+  // first delete the existing room
+  try{
+    await roomSvc.deleteRoom(roomName);
+  } catch(err) {
+    //ignore
+  }
   try
   {
-    await roomSvc.createRoom({ name: roomName, metadata: metadataStr});
+    await roomSvc.createRoom({ name: roomName, metadata: metadataStr, emptyTimeout: 5});
   } catch (err) {
+    console.log("Room already exists")
     await roomSvc.updateRoomMetadata(roomName, metadataStr);
   }
 
