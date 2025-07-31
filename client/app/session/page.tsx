@@ -42,7 +42,7 @@ export default function SessionPage() {
           window.location.assign('/login?verify=1');
           return;
         }
-        if(user.stage && user.stage != 1) {
+        if(user.stage && user.stage != 0 && user.stage != 1) {
           window.location.assign('/day'); return; 
         }
         const d = new Date();
@@ -52,7 +52,7 @@ export default function SessionPage() {
           day : d.getDay(),
           time : d.toTimeString(),
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          locale: "en_US",
+          locale: "en-US",
           userId: user.id
         }
         setMetadata(metadata_created);

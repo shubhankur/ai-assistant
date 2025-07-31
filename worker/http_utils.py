@@ -30,5 +30,8 @@ async def api_post_internal(path: str, data: dict):
     }
     async with aiohttp.ClientSession() as session:
         async with session.post(url, json=data, headers=headers) as resp:
-            response_data = await resp.json()
-            return resp, response_data
+            if resp.content_type == 'application/json':
+                body = await resp.json()
+            else:
+                body = await resp.text()
+            return resp, body

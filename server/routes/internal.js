@@ -15,7 +15,20 @@ router.use(internalAuth);
 // ---- Daily Plans ----
 router.post('/dailyPlans/save', async (req, res) => {
   try {
-    const doc = await DailyPlan.create(req.body);
+    // Add user ID from authenticated user
+    const dailyPlanData = req.body;
+    // Check if plan already exists for this user and date
+    const existingPlan = await DailyPlan.findOne({
+      userid: dailyPlanData.userid,
+      date: dailyPlanData.date
+    });
+
+    if (existingPlan) {
+      // Increment version number
+      dailyPlanData.version = (existingPlan.version || 0) + 1;
+    }
+    // Create new document with version number
+    const doc = await DailyPlan.create(dailyPlanData);
     return res.status(201).json(doc);
   } catch (err) {
     return res.status(400).json({ error: err.message });
@@ -23,7 +36,7 @@ router.post('/dailyPlans/save', async (req, res) => {
 });
 
 // ---- Current Routine ----
-router.post('/currentRoutines', async (req, res) => {
+router.post('/currentRoutines/save', async (req, res) => {
   try {
     const doc = await CurrentRoutine.create(req.body);
     return res.status(201).json(doc);

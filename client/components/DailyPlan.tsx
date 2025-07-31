@@ -45,6 +45,7 @@ interface BlockWithGroupId extends Block {
 
 export function DailyPlan(plan: DayPlan) {
     // ensure every block has groupId
+    const [year, month, day] = plan.date.split('-')
     const [state, setState] = useState<BlockWithGroupId[]>();
     const open_blk = {
         start:"",
@@ -171,7 +172,7 @@ export function DailyPlan(plan: DayPlan) {
     /* render */
     return (
         <div className="max-w-xl mx-auto bg-gray-900 rounded-xl p-4 space-y-2 text-gray-100">
-            <h2 className="text-lg font-semibold mb-2 select-none">{new Date(plan.date).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}</h2>
+            <h2 className="text-lg font-semibold mb-2 select-none">{parseInt(month)}/{parseInt(day)}/{year}</h2>
             {slots.map((s, i) => (
                 <div key={i} className="flex items-start gap-3">
                     <div className="w-20 text-xs text-gray-400 select-none">{s.time}</div>

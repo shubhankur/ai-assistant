@@ -24,25 +24,28 @@ export default function Home(){
             else{
               window.location.assign("/day")
             }
-          }, 5000)
+          }, 0)
         }
         else{
           setTimeout(() => {
             handle_auth_fail();
-          }, 5000)
+          }, 0)
         }
       } catch (e) {
         setTimeout(() => {
             handle_auth_fail();
-          }, 5000)
+          }, 0)
       }
 
       function handle_auth_fail() {
         const visitor = localStorage.getItem("visitor_id");
         if (!visitor) {
           localStorage.setItem("visitor_id", Math.floor(100000 + Math.random() * 900000).toString())
+          setTimeout(() => window.location.assign("/login"), 5000)
         }
+        else {
         window.location.assign("/login")
+        }
         return
         //setCenterMessage("take a few deep breaths");
       }

@@ -52,7 +52,7 @@ export default function DailyPage() {
         window.location.assign('/login?verify=1');
         return;
       }
-      const today = new Date().toLocaleDateString();
+      const today = new Date().toISOString().split("T")[0];
       const res = await fetch(`${SERVER_URL}/dailyPlans?date=${encodeURIComponent(today)}`, {
         credentials: 'include',
       });
@@ -72,7 +72,7 @@ export default function DailyPage() {
           console.log("Day in session storage is ", whichDay)
           if(whichDay) setPlan(tempPlan)
           else {
-          sessionStorage.removeItem("currentPlan")
+          //sessionStorage.removeItem("currentPlan")
           setStartAgent(true);
         }
       } else{

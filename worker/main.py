@@ -39,7 +39,8 @@ def createSession() -> AgentSession :
         vad=silero.vad.VAD.load(),
         min_endpointing_delay=2,
         allow_interruptions=False,
-        conn_options = session_opts
+        conn_options = session_opts,
+        
     )
     return session
 
@@ -116,10 +117,11 @@ async def entrypoint(ctx: agents.JobContext):
                 def participant_attributes_changed_sync(attributes, participant):
                     asyncio.create_task(agent.on_participant_attribute_changed(attributes, participant))
                 def on_participant_disconnected_sync(reason):
-                    asyncio.create_task(agent.on_participant_disconnected(reason))
+                    asyncio.create_task(agent.on_shutdown(reason))
                 agent.set_room(ctx.room)
                 ctx.room.on("participant_attributes_changed", participant_attributes_changed_sync)
-                ctx.room.on("participant_disconnected", on_participant_disconnected_sync)
+                # ctx.room.on("participant_disconnected", on_participant_disconnected_sync)
+                ctx.add_shutdown_callback(agent.on_shutdown)
                 await agent.start(metadataJson)
             elif(stage == 6):
                 new_agent = DayAgent(session)

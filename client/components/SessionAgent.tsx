@@ -12,7 +12,7 @@ import { updateStageAtDB } from '@/utils/serverApis';
 export function SessionAgent() {
     const {state, agentAttributes, audioTrack} = useVoiceAssistant();
     const roomCtx = useRoomContext();
-    const stage = Number(agentAttributes?.stage ?? 1);
+    const stage = Number(agentAttributes?.stage);
     const [prevStage, setPrevStage] = useState(0);
 
     const {textStreams : todayPlanStream} = useTextStream("today_plan");
@@ -25,13 +25,11 @@ export function SessionAgent() {
       if (todayPlanStream.length != 0) {
         const latest = todayPlanStream[todayPlanStream.length - 1].text;
         const parsed : DayPlan = JSON.parse(latest);
-        parsed.date = new Date().toDateString();
         setTodayPlan(parsed);
       }
       else if (tomorrowPlanStream.length != 0) {
         const latest = tomorrowPlanStream[tomorrowPlanStream.length - 1].text;
         const parsed : DayPlan = JSON.parse(latest);
-        parsed.date = new Date(new Date().setDate(new Date().getDate() + 1)).toDateString();
         setTomorrowPlan(parsed);
       }
     }, [todayPlanStream, tomorrowPlanStream]);
@@ -45,7 +43,7 @@ export function SessionAgent() {
 
     //update stage at DB
     useEffect(() => {
-      if(prevStage != stage) {
+      if(stage && prevStage != stage) {
         setPrevStage(stage)
         //ToDo: After stage 5, for some reason teh stage is being updated with value 1
         console.log("updating stage", stage)
@@ -55,7 +53,7 @@ export function SessionAgent() {
 
     //move to /day
     useEffect(() => {
-      if (stage === 5) {
+      if (stage == 5) {
         if (todayPlan) {
           sessionStorage.setItem('currentPlan', JSON.stringify(todayPlan));
           window.location.assign('/day');

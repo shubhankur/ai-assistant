@@ -10,7 +10,7 @@ export async function GET(req: Request) {
     if (meta.userId) id = meta.userId;
   } catch {}
   const identity = id;
-  const roomName = `room-${id}`;
+  const roomName = `roomba-${id}`;
   const apiKey = process.env.LIVEKIT_API_KEY;
   const apiSecret = process.env.LIVEKIT_API_SECRET;
   const serverUrl = process.env.LIVEKIT_URL;
