@@ -9,18 +9,18 @@ export default function ConnectRoom({
   metadata,
 }: {
   children: ReactNode;
-  metadata: JSON | Metadata
+  metadata: Metadata
 }) {
   const [token, setToken] = useState<string>();
   const [serverUrl, setServerUrl] = useState<string>();
   
   useEffect(() => {
-    if (token || !metadata) return;
-
+    if (token || !metadata || !metadata.userId) return;
+    console.log("metadata received, ", metadata)
     const fetchToken = async () => {
       const q = `?metadata=${encodeURIComponent(JSON.stringify(metadata))}`;
       try {
-        const res = await fetch(`${SERVER_URL}/token${q}`);
+        const res = await fetch(`${SERVER_URL}/livekit/token${q}`);
         if (!res.ok) {
           const errBody = await res.text(); // capture server error message
           console.log(`Token request failed (${res.status})`, errBody);

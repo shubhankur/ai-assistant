@@ -41,6 +41,7 @@ export interface DayPlan {
 export default function DailyPage() {
   const [tab, setTab] = useState<"quick" | "timeline">("quick");
   const [plan, setPlan] = useState<DayPlan | null>(null);
+  const [userId, setUserId] = useState<string>("")
   const [startAgent, setStartAgent] = useState(false);
 
   useEffect(() => {
@@ -52,33 +53,21 @@ export default function DailyPage() {
         window.location.assign('/login?verify=1');
         return;
       }
-      const today = new Date().toISOString().split("T")[0];
-      const res = await fetch(`${SERVER_URL}/dailyPlans?date=${encodeURIComponent(today)}`, {
+      if(user.stage == 0 || user.stage == 1){
+        window.location.assign('/session');
+        return;
+      }
+      setUserId(user.id)
+      const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
+      const res = await fetch(`${SERVER_URL}/dailyPlans/fetchByDate/?date=${encodeURIComponent(tomorrow)}`, {
         credentials: 'include',
       });
       if (res.ok) {
         const p = await res.json();
         setPlan(p);
-      } else {
-        const dailyPlanFromSessionStorage = sessionStorage.getItem("currentPlan")
-        if(dailyPlanFromSessionStorage) {
-          const tempPlan : DayPlan = JSON.parse(dailyPlanFromSessionStorage)
-          const today = new Date().toISOString().split("T")[0];
-          console.log(today)
-          const tomorrow = new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split("T")[0];
-          console.log(tomorrow)
-          console.log(tempPlan.date)
-          const whichDay = tempPlan.date === today ? 'today' : tempPlan.date === tomorrow ? 'tomorrow' : null;
-          console.log("Day in session storage is ", whichDay)
-          if(whichDay) setPlan(tempPlan)
-          else {
-          //sessionStorage.removeItem("currentPlan")
-          setStartAgent(true);
-        }
       } else{
         setStartAgent(true);
       }
-    }
     }
     fetchPlan();
   }, []);

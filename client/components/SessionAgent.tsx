@@ -11,8 +11,10 @@ import { updateStageAtDB } from '@/utils/serverApis';
 
 export function SessionAgent() {
     const {state, agentAttributes, audioTrack} = useVoiceAssistant();
+    console.log("state: ", state)
     const roomCtx = useRoomContext();
     const stage = Number(agentAttributes?.stage);
+    console.log("stage: ", stage)
     const [prevStage, setPrevStage] = useState(0);
 
     const {textStreams : todayPlanStream} = useTextStream("today_plan");
@@ -65,7 +67,7 @@ export function SessionAgent() {
   
     return (
       <div>
-        {stage < 5 && (
+        {(!stage || stage < 5) && (
         <div className="flex flex-col items-center bg-black">
           {/* ToDo; Get device volume when media is being played and use that*/}
           <VolumeWarning volume={1} />

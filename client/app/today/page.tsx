@@ -59,9 +59,13 @@ export default function DailyPage() {
         window.location.assign('/login?verify=1');
         return;
       }
+      if(user.stage == 0 || user.stage == 1){
+        window.location.assign('/session');
+        return;
+      }
       setUserId(user.id)
       const today = new Date().toISOString().split("T")[0];
-      const res = await fetch(`${SERVER_URL}/dailyPlans?date=${encodeURIComponent(today)}`, {
+      const res = await fetch(`${SERVER_URL}/dailyPlans/fetchByDate/?date=${encodeURIComponent(today)}`, {
         credentials: 'include',
       });
       if (res.ok) {

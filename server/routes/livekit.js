@@ -3,9 +3,8 @@ const { AccessToken, RoomServiceClient } = require('livekit-server-sdk');
 
 const router = express.Router();
 
-router.get('/', async (req, res) => {
-  const metadataStr = req.query.metadata || '';
-  let id = Math.random().toString(36).slice(2, 10);
+router.get('/token', async (req, res) => {
+  const metadataStr = req.query.metadata;
   let meta;
   try {
     meta = JSON.parse(metadataStr);
@@ -16,7 +15,7 @@ router.get('/', async (req, res) => {
   else return res.status(500).json({ error: 'Missing User Id' });
 
   const identity = id;
-  const roomName = `roomba-${id}`;
+  const roomName = `roomba-${id}-${Date.now()}`;
   const apiKey = process.env.LIVEKIT_API_KEY;
   const apiSecret = process.env.LIVEKIT_API_SECRET;
   const serverUrl = process.env.LIVEKIT_URL;
@@ -32,7 +31,7 @@ router.get('/', async (req, res) => {
     // ignore
   }
   try {
-    await roomSvc.createRoom({ name: roomName, metadata: metadataStr, emptyTimeout: 5 });
+    await roomSvc.createRoom({ name: roomName, metadata: metadataStr, departureTimeout: 5, maxParticipants:2 });
   } catch (err) {
     console.log('Room already exists');
     await roomSvc.updateRoomMetadata(roomName, metadataStr);

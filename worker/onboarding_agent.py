@@ -419,13 +419,11 @@ class OnboardingAgent(Agent):
     
     async def update_stage(self, stage_num:int, chat_ctx: llm.ChatContext):
         print("Moving to stage ", stage_num)
-        # if(stage_num == 3):
-        #     self.session.say("Lets start with your current routine!")
         await self.set_stage(stage_num)
         prompt_key = "stage" + str(stage_num)
         new_prompt = ONBOARDING_PROMPTS[prompt_key]
         chat_ctx.add_message(role="system", content=new_prompt)
-        await self._session._agent.update_chat_ctx(chat_ctx)
+        await self.update_chat_ctx(chat_ctx)
         self._session.generate_reply()
 
     def _store_stage3_output(self, task: asyncio.Task[str]) -> None:
