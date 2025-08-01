@@ -1,7 +1,7 @@
 import { AgentVisualizer } from '@/components/AgentVisualizer';
 import {useVoiceAssistant, useTextStream, useRoomContext} from '@livekit/components-react';
 import React, { useEffect, useState } from 'react';
-import { DayPlan } from '@/app/day/today/page';
+import { DayPlan } from '@/app/today/page';
 import TranscriptionView from '@/components/TranscriptionView'
 import { VolumeWarning } from '@/components/VolumeWarning';
 import { VoiceControlBar } from '@/components/VoiceControlBar';
@@ -55,10 +55,10 @@ export function SessionAgent() {
     useEffect(() => {
       if (stage == 5) {
         if (todayPlan) {
-          window.location.assign('/day/today');
+          window.location.assign('/today');
         } else if (tomorrowPlan) {
           sessionStorage.setItem('currentPlan', JSON.stringify(tomorrowPlan));
-          window.location.assign('/day/tomorrow');
+          window.location.assign('/tomorrow');
         }
       }
     }, [stage, todayPlan, tomorrowPlan]);
@@ -77,7 +77,7 @@ export function SessionAgent() {
             <VoiceControlBar/>
             <Button variant="outline" className='bg-blue-600 ml-2'
               onClick={() => {
-                window.location.assign('/day/today')
+                window.location.assign('/today')
                 return
               }}
             >

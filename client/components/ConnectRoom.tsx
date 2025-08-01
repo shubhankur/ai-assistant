@@ -2,6 +2,7 @@
 import { Metadata } from '@/app/session/page';
 import { LiveKitRoom, RoomAudioRenderer } from '@livekit/components-react';
 import { ReactNode, useEffect, useState } from 'react';
+import { SERVER_URL } from '@/utils/constants';
 
 export default function ConnectRoom({
   children,
@@ -19,7 +20,7 @@ export default function ConnectRoom({
     const fetchToken = async () => {
       const q = `?metadata=${encodeURIComponent(JSON.stringify(metadata))}`;
       try {
-        const res = await fetch(`/api/token${q}`);
+        const res = await fetch(`${SERVER_URL}/token${q}`);
         if (!res.ok) {
           const errBody = await res.text(); // capture server error message
           console.log(`Token request failed (${res.status})`, errBody);

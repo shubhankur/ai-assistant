@@ -22,7 +22,7 @@ export default function Home(){
               window.location.assign("/session")
             }
             else{
-              window.location.assign('/day/today')
+              window.location.assign('/today')
             }
           }, 0)
         }

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Calendar } from "lucide-react";
-import { DayPlan } from "@/app/day/today/page";
+import { DayPlan } from "@/app/today/page";
 import ConnectRoom from "./ConnectRoom";
 import { Button } from "./ui/button";
 import { AgentVisualizer } from "./AgentVisualizer";

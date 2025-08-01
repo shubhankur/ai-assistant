@@ -23,7 +23,7 @@ export default function SessionPage() {
 
   const handleUserDiscontinue = async (stageNum: number) => {
     updateStageAtDB(stageNum)
-    window.location.assign('/day/today')
+    window.location.assign('/today')
   }
 
   const handleUserContinue = () => {
@@ -43,7 +43,7 @@ export default function SessionPage() {
           return;
         }
         if(user.stage && user.stage != 0 && user.stage != 1) {
-          window.location.assign('/day/today'); return; 
+          window.location.assign('/today'); return;
         }
         const d = new Date();
         const metadata_created : Metadata = {
