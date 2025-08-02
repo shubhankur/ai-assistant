@@ -132,7 +132,7 @@ Return a JSONObject.
           "start": "HH:MM", // add '+1' if overflows to the next day, for example, "02:00+1"
           "end":   "HH:MM", // add '+1' if overflows to the next day, for example, "02:00+1"
           "name":  "",
-          "category": "work | workout | sleep | meals | relax(e.g: mindfulness) | routine(e.g.: laundry, cleaning) | goals | hobby | other",
+          "category": "work | workout | wakeup | sleep | meals | relax(e.g: mindfulness) | routine(e.g.: laundry, cleaning) | goals | hobby | other",
           "location": "",      // optional
           "details":  ""       // optional
         }}
@@ -145,11 +145,10 @@ Return a JSONObject.
       • Since we are starting the day with wake up in the morning. Consider midnight, that is 00:00 or 12AM as the next day. So return it with +1.
       • Two activities cannot have the same start time or same end times.
     2. Sleep Block
-      • There should be only one block with the name "Sleep" and it should be the last acitivity of the day.
+      • There should be only one "Sleep" and it should be the last acitivity of the day.
       • If the user has multiple sleep timings in a day, call it other sleep terms for e.g. "Afternoon Sleep/Nap"
     3. Wake Up Block
-      • There should always be one and only one Wake Up block which demonstrates start of the day.
-      • If the user has multiple sleep timings in a day, call it other sleep terms for e.g. "Afternoon Sleep/Nap"
+      • There should always be one and only one block exactly with the name "Wake Up" which demonstrates start of the day.
     4. User's Aspirations and Goals 
       • Based on the discussion with user about their aspirations, desired changes and goals, prepare the schedule that move the user from their current routine toward their aspirations.
       • Like a Licensed Occupational Therapist / Lifestyle Medicine Physician, include some activities that helps user have a better lifestyle and achieve their goals. For Example: Mindfulness, Enough Physical Activity, and Better Sleep.

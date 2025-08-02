@@ -58,7 +58,7 @@ export default function DailyPage() {
         return;
       }
       setUserId(user.id)
-      const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
+      const tomorrow = new Date(Date.now() + 86400000).toLocaleDateString("en-CA")
       const res = await fetch(`${SERVER_URL}/dailyPlans/fetchByDate/?date=${encodeURIComponent(tomorrow)}`, {
         credentials: 'include',
       });
