@@ -11,7 +11,7 @@ router.post('/save', async (req, res) => {
     const existingPlan = await DailyPlan.findOne({
       userid: req.user._id,
       date: dailyPlanData.date
-    });
+    }).sort({ version: -1 });
 
     if (existingPlan) {
       // Increment version number

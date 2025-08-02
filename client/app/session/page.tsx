@@ -14,6 +14,7 @@ export interface Metadata {
   time: string,
   timezone: string,
   locale : string,
+  isTomorrow? : string,
   userId: string
 }
 

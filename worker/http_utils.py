@@ -35,3 +35,20 @@ async def api_post_internal(path: str, data: dict):
             else:
                 body = await resp.text()
             return resp, body
+        
+
+async def api_get_internal(path: str):
+    """GET from the server's internal API endpoint using the internal API key."""
+    url = f"{SERVER_URL.rstrip('/')}/internal/{path.lstrip('/')}"
+    headers = {
+        'Authorization': f'Bearer {INTERNAL_API_KEY}',
+        'Content-Type': 'application/json',
+    }
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, headers=headers) as resp:
+            if resp.content_type == 'application/json':
+                body = await resp.json()
+            else:
+                body = await resp.text()
+            return resp, body
+

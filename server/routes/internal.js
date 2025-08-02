@@ -75,4 +75,26 @@ router.post('/weeklyRoutines/save', async (req, res) => {
   }
 });
 
+// ---- Get Latest Weekly Routine ----
+router.get('/weeklyRoutines/get', async (req, res) => {
+  try {
+    const userId = req.query.userId;
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'userId query parameter is required' });
+    }
+
+    const doc = await WeeklyRoutine.findOne({ userid: userId })
+      .sort({ createdAt: -1 }); // Sort by creation date descending to get most recent
+    
+    if (!doc) {
+      return res.status(404).json({ error: 'No weekly routine found for this user' });
+    }
+    
+    return res.status(200).json(doc);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+});
+
 module.exports = router; 
