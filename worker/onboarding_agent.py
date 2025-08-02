@@ -96,6 +96,12 @@ class OnboardingAgent(Agent):
     async def start(self, metadata_json : json) -> None:
         try:
             self.user_id = metadata_json["userId"]
+            #verify participant id
+            for p in self._room.remote_participants.values():
+                if(p.identity != self.user_id):
+                    await self._room.disconnect()
+                    raise Exception("Participant Id should be same as the User Id")
+                
             # day as integer
             day = int(metadata_json["day"])
             if day < 0 or day > 6:
@@ -413,13 +419,11 @@ class OnboardingAgent(Agent):
     
     async def update_stage(self, stage_num:int, chat_ctx: llm.ChatContext):
         print("Moving to stage ", stage_num)
-        # if(stage_num == 3):
-        #     self.session.say("Lets start with your current routine!")
         await self.set_stage(stage_num)
         prompt_key = "stage" + str(stage_num)
         new_prompt = ONBOARDING_PROMPTS[prompt_key]
         chat_ctx.add_message(role="system", content=new_prompt)
-        await self._session._agent.update_chat_ctx(chat_ctx)
+        await self.update_chat_ctx(chat_ctx)
         self._session.generate_reply()
 
     def _store_stage3_output(self, task: asyncio.Task[str]) -> None:

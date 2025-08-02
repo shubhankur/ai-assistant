@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import { ArrowRight, ArrowDown } from "lucide-react";
 import { v4 as uuid } from "uuid";
-import { Category, DayPlan, Block } from "@/app/day/page";
-import { stat } from "fs";
+import { Category, DayPlan, Block } from "@/app/today/page";
+import { SERVER_URL } from "@/utils/constants";
 
 /* ------------------------ Style Map ---------------------------------- */
 const catBg: Record<string, string> = {
@@ -32,10 +32,7 @@ const hhmmToDate = (s: string) => {
 const dateToHHMM = (d: Date, n = false) => `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}${n ? "+1" : ""}`;
 const fmt = (d: Date) => d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: TZ });
 
-/* ------------------------ Functions ------------------------------- */
-const onChange = (b: BlockWithGroupId[]) => {
-    //update DB
-}
+
 
 /* ------------------------ Component ---------------------------------- */
 
@@ -47,6 +44,7 @@ export function DailyPlan(plan: DayPlan) {
     // ensure every block has groupId
     const [year, month, day] = plan.date.split('-')
     const [state, setState] = useState<BlockWithGroupId[]>();
+
     const open_blk = {
         start:"",
         end:"",
@@ -56,15 +54,58 @@ export function DailyPlan(plan: DayPlan) {
     }
     useEffect(() => {
         const received_blocks: Block[] = plan.blocks;
+        // 1) Find a "Wake Up" block (case-insensitive)
+        const wakeUp = received_blocks.find(b => b.name.toLowerCase() === "wake up");
+        const wakeUpMinutes = wakeUp ? (() => {
+            const [h, m] = wakeUp.start.replace("+1", "").split(":").map(Number);
+            return h * 60 + m;
+        })() : null;
+        const addPlusIfNeeded = (time: string): string => {
+            if (time.includes("+1")) return time;       // already tagged
+            const [h, m] = time.split(":").map(Number);
+            const mins = h * 60 + m;
+            // Any time strictly before wake-up belongs to *next* day
+            if(wakeUpMinutes){
+                return mins < wakeUpMinutes ? `${time}+1` : time;
+            } else {
+                return mins < 240 ? `${time}+1` : time;
+            }
+        };
         const init: BlockWithGroupId[] = received_blocks.map(block => ({
             ...block,
+            start: addPlusIfNeeded(block.start),
+            end: addPlusIfNeeded(block.end),
             groupId: uuid()
         }));
-        setState(init)
-    },[plan])
+        setState(init);
+    }, [plan]);
 
     const [editing, setEditing] = useState<number | null>(null);
     const inputRef = useRef<HTMLTextAreaElement | null>(null);
+
+    // Persist updated plan to server, incrementing version automatically
+    const persistPlan = async (blocks: BlockWithGroupId[]) => {
+        try {
+            // Strip internal UI fields before sending
+            const cleanBlocks: Block[] = blocks.map(({ groupId, ...rest }) => rest);
+            const payload = {
+                date: plan.date,
+                week_day: plan.week_day,
+                timezone: plan.timezone,
+                locale: plan.locale,
+                blocks: cleanBlocks,
+            } as const;
+
+            await fetch(`${SERVER_URL}/dailyPlans/save`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(payload),
+            });
+        } catch (err) {
+            console.error('Failed to save daily plan', err);
+        }
+    };
     useEffect(() => { if (editing !== null) inputRef.current?.focus(); }, [editing]);
 
 
@@ -152,8 +193,9 @@ export function DailyPlan(plan: DayPlan) {
         const startKey = dateToHHMM(sl.slotStart);
         const bi = next.findIndex(b => b.start === startKey);
         next[bi] = { ...next[bi], name: inputRef.current.value.trim() || next[bi].name };
-        setState(next); onChange(next); setEditing(null);
+        setState(next); persistPlan(next); setEditing(null);
     };
+    
     const saveAll = (si: number) => {
         const sl = slots[si]; 
         if (!sl.block || !inputRef.current) return;
@@ -165,7 +207,7 @@ export function DailyPlan(plan: DayPlan) {
         );
     
         setState(next);
-        onChange(next);
+        persistPlan(next);
         setEditing(null);
     };
     console.log(editing)

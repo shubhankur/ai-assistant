@@ -2,32 +2,39 @@
 import { Metadata } from '@/app/session/page';
 import { LiveKitRoom, RoomAudioRenderer } from '@livekit/components-react';
 import { ReactNode, useEffect, useState } from 'react';
+import { SERVER_URL } from '@/utils/constants';
 
 export default function ConnectRoom({
   children,
   metadata,
 }: {
   children: ReactNode;
-  metadata: JSON | Metadata
+  metadata: Metadata
 }) {
   const [token, setToken] = useState<string>();
   const [serverUrl, setServerUrl] = useState<string>();
+  
   useEffect(() => {
-    if (token || !metadata) return;
-    const q = metadata ? `?metadata=${encodeURIComponent(JSON.stringify(metadata))}` : '';
-    fetch(`/api/token${q}`)
-      .then((res) => {
-        console.log('LiveKitProvider: Response received', res.status);
-        return res.json();
-      })
-      .then((d) => {
-        console.log('LiveKitProvider: Token received', d);
-        setToken(d.token);
-        setServerUrl(d.serverUrl);
-      })
-      .catch((err) => {
-        console.error('LiveKitProvider: Fetch error', err);
-      });
+    if (token || !metadata || !metadata.userId) return;
+    console.log("metadata received, ", metadata)
+    const fetchToken = async () => {
+      const q = `?metadata=${encodeURIComponent(JSON.stringify(metadata))}`;
+      try {
+        const res = await fetch(`${SERVER_URL}/livekit/token${q}`);
+        if (!res.ok) {
+          const errBody = await res.text(); // capture server error message
+          console.log(`Token request failed (${res.status})`, errBody);
+          return;
+        } 
+        const { token, serverUrl } = await res.json();
+        setToken(token);
+        setServerUrl(serverUrl);
+      } catch (err) {
+        console.error('Token request crashed', err);
+      }
+    };
+
+    fetchToken();
   }, [metadata, token]);
 
   if (!token) {
