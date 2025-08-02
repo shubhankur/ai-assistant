@@ -91,6 +91,17 @@ async def entrypoint(ctx: agents.JobContext):
         if(stage == 1):
             session = createSession()
             agent = OnboardingAgent(session)
+            await session.start(
+                    room=ctx.room,
+                    agent=agent,
+                    room_input_options=RoomInputOptions(
+                        # LiveKit Cloud enhanced noise cancellation
+                        # - If self-hosting, omit this parameter
+                        # - For telephony applications, use `BVCTelephony` for best results
+                        noise_cancellation=noise_cancellation.BVC(), 
+                        close_on_disconnect=False
+                    ),
+                )
             def participant_attributes_changed_sync(attributes, participant):
                 asyncio.create_task(agent.on_participant_attribute_changed(attributes, participant))
             agent.set_room(ctx.room)
@@ -100,6 +111,17 @@ async def entrypoint(ctx: agents.JobContext):
         elif(stage == 10):
             session = createSession()
             agent = DailyPlanAgent(session)
+            await session.start(
+                    room=ctx.room,
+                    agent=agent,
+                    room_input_options=RoomInputOptions(
+                        # LiveKit Cloud enhanced noise cancellation
+                        # - If self-hosting, omit this parameter
+                        # - For telephony applications, use `BVCTelephony` for best results
+                        noise_cancellation=noise_cancellation.BVC(), 
+                        close_on_disconnect=False
+                    ),
+                )
             agent.set_room(ctx.room)
             
     except (Exception) as e:

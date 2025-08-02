@@ -1,7 +1,7 @@
 import { AgentVisualizer } from '@/components/AgentVisualizer';
 import {useVoiceAssistant, useTextStream, useRoomContext} from '@livekit/components-react';
 import React, { useEffect, useState } from 'react';
-import { DayPlan } from '@/app/day/today/page';
+import { DayPlan } from '@/app/today/page';
 import TranscriptionView from '@/components/TranscriptionView'
 import { VolumeWarning } from '@/components/VolumeWarning';
 import { VoiceControlBar } from '@/components/VoiceControlBar';
@@ -11,8 +11,10 @@ import { updateStageAtDB } from '@/utils/serverApis';
 
 export function SessionAgent() {
     const {state, agentAttributes, audioTrack} = useVoiceAssistant();
+    console.log("state: ", state)
     const roomCtx = useRoomContext();
     const stage = Number(agentAttributes?.stage);
+    console.log("stage: ", stage)
     const [prevStage, setPrevStage] = useState(0);
 
     const {textStreams : todayPlanStream} = useTextStream("today_plan");
@@ -55,17 +57,17 @@ export function SessionAgent() {
     useEffect(() => {
       if (stage == 5) {
         if (todayPlan) {
-          window.location.assign('/day/today');
+          window.location.assign('/today');
         } else if (tomorrowPlan) {
           sessionStorage.setItem('currentPlan', JSON.stringify(tomorrowPlan));
-          window.location.assign('/day/tomorrow');
+          window.location.assign('/tomorrow');
         }
       }
     }, [stage, todayPlan, tomorrowPlan]);
   
     return (
       <div>
-        {stage < 5 && (
+        {(!stage || stage < 5) && (
         <div className="flex flex-col items-center bg-black">
           {/* ToDo; Get device volume when media is being played and use that*/}
           <VolumeWarning volume={1} />
@@ -77,7 +79,7 @@ export function SessionAgent() {
             <VoiceControlBar/>
             <Button variant="outline" className='bg-blue-600 ml-2'
               onClick={() => {
-                window.location.assign('/day/today')
+                window.location.assign('/today')
                 return
               }}
             >

@@ -12,6 +12,7 @@ const weeklyRoutines = require('./routes/weeklyRoutines');
 const auth = require('./routes/auth');
 const authMiddleware = require('./middleware/auth');
 const internalRoutes = require('./routes/internal');
+const livekit = require('./routes/livekit');
 
 const cors = require('cors'); 
 
@@ -30,6 +31,7 @@ app.use((req, res, next) => {
 
 // Public routes (no authentication required)
 app.use('/auth', auth);
+app.use('/livekit', livekit);
 
 // Internal service-to-service routes (API-key auth)
 app.use('/internal', internalRoutes);

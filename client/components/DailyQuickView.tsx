@@ -1,11 +1,12 @@
 import React, { useState } from "react";
 import { Calendar } from "lucide-react";
-import { DayPlan } from "@/app/day/today/page";
+import { DayPlan } from "@/app/today/page";
 import ConnectRoom from "./ConnectRoom";
 import { Button } from "./ui/button";
 import { AgentVisualizer } from "./AgentVisualizer";
 import { VoiceControlBar } from "./VoiceControlBar";
 import { DisconnectButton, VoiceAssistantControlBar } from "@livekit/components-react";
+import { Metadata } from "@/app/session/page";
 
 /* ------------- Helpers ----------------- */
 const catColor: Record<string, string> = {
@@ -40,7 +41,7 @@ export function DailyQuickView (plan: DayPlan) {
   console.log(new Date(plan.date).toLocaleDateString())
   console.log(new Date(plan.date).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" }))
   const [agent, setAgent] = useState<Boolean>(false);
-  const [metadata, setMetadata]= useState<JSON>();
+  const [metadata, setMetadata]= useState<Metadata>();
   const activateAI = () => {
       setAgent(true);
       const metadataJsonString = `{"stage": "start_day_ai","current_plan": ${JSON.stringify(plan)}}`;

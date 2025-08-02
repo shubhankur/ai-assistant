@@ -32,7 +32,14 @@ export interface Block {
 }
 
 export interface DayPlan {
-  date: string;   // ISO YYYY‑MM‑DD (optional for future use)
+  _id?: string;
+  userid?: string;
+  date: string;   // ISO YYYY‑MM‑DD
+  week_day?: string;
+  timezone?: string;
+  locale?: string;
+  version?: number;
+  created_at?: Date;
   blocks: Block[];
 }
 
@@ -59,9 +66,13 @@ export default function DailyPage() {
         window.location.assign('/login?verify=1');
         return;
       }
+      if(user.stage == 0 || user.stage == 1){
+        window.location.assign('/session');
+        return;
+      }
       setUserId(user.id)
-      const today = new Date().toISOString().split("T")[0];
-      const res = await fetch(`${SERVER_URL}/dailyPlans?date=${encodeURIComponent(today)}`, {
+      const today = new Date().toLocaleDateString('en-CA'); // en-CA gives yyyy-mm-dd format
+      const res = await fetch(`${SERVER_URL}/dailyPlans/fetchByDate/?date=${encodeURIComponent(today)}`, {
         credentials: 'include',
       });
       if (res.ok) {
