@@ -27,23 +27,29 @@ export interface WeeklyRoutinePreviewProps {
 }
 
 const categoryColors = {
-  routine: "bg-slate-100 border-slate-300 text-slate-700",
   work: "bg-blue-100 border-blue-300 text-blue-800",
-  physical: "bg-emerald-100 border-emerald-300 text-emerald-800",
-  mindful: "bg-purple-100 border-purple-300 text-purple-800",
-  sleep: "bg-indigo-100 border-indigo-300 text-indigo-800",
-  goal: "bg-orange-100 border-orange-300 text-orange-800",
-  hobby: "bg-rose-100 border-rose-300 text-rose-800",
+  workout: "bg-red-100 border-red-300 text-red-800",
+  wakeup: "bg-amber-100 border-amber-300 text-amber-800",
+  sleep: "bg-sky-100 border-sky-300 text-sky-800",
+  relax: "bg-indigo-100 border-indigo-300 text-indigo-800",
+  routine: "bg-emerald-100 border-emerald-300 text-emerald-800",
+  goals: "bg-orange-100 border-orange-300 text-orange-800",
+  hobby: "bg-pink-100 border-pink-300 text-pink-800",
+  other: "bg-gray-100 border-gray-300 text-gray-800",
+  meals: "bg-emerald-100 border-emerald-300 text-emerald-800",
 }
 
 const categoryDots = {
-  routine: "bg-slate-400",
   work: "bg-blue-500",
-  physical: "bg-emerald-500",
-  mindful: "bg-purple-500",
-  sleep: "bg-indigo-600",
-  goal: "bg-orange-500",
-  hobby: "bg-rose-500",
+  workout: "bg-red-500",
+  wakeup: "bg-amber-400",
+  sleep: "bg-sky-400",
+  relax: "bg-indigo-400",
+  routine: "bg-emerald-500",
+  goals: "bg-orange-500",
+  hobby: "bg-pink-400",
+  other: "bg-gray-500",
+  meals: "bg-emerald-500",
 }
 
 function parseTime(timeStr: string): { hours: number; minutes: number; nextDay: boolean } {
@@ -78,7 +84,7 @@ function formatTime12Hour(timeStr: string): string {
 }
 
 export default function WeeklyRoutinePreview({ data }: WeeklyRoutinePreviewProps) {
-  const [viewMode, setViewMode] = useState<"desktop" | "mobile">("mobile")
+  const [viewMode, setViewMode] = useState<"desktop" | "mobile">("desktop")
   const [collapsedDays, setCollapsedDays] = useState<Set<string>>(new Set())
 
   const hourSlots = useMemo(() => generateHourSlots(), [])
@@ -98,17 +104,17 @@ export default function WeeklyRoutinePreview({ data }: WeeklyRoutinePreviewProps
       {data.days.map((day) => (
         <Card key={day.day} className="bg-white/80 backdrop-blur-sm border-0 shadow-lg overflow-hidden">
           <div
-            className="flex items-center gap-3 p-4 cursor-pointer hover:bg-slate-50/50 transition-colors"
+            className="flex items-center gap-3 p-4 cursor-pointer hover:bg-gray-50/50 transition-colors"
             onClick={() => toggleDayCollapse(day.day)}
           >
             {collapsedDays.has(day.day) ? (
-              <ChevronRight className="w-4 h-4 text-slate-500" />
+              <ChevronRight className="w-4 h-4 text-gray-500" />
             ) : (
-              <ChevronDown className="w-4 h-4 text-slate-500" />
+              <ChevronDown className="w-4 h-4 text-gray-500" />
             )}
-            <h3 className="text-xl font-semibold text-slate-800">{day.day}</h3>
-            <div className="h-px bg-slate-200 flex-1" />
-            <span className="text-sm text-slate-500">{day.blocks.length} activities</span>
+            <h3 className="text-xl font-semibold text-gray-800">{day.day}</h3>
+            <div className="h-px bg-gray-200 flex-1" />
+            <span className="text-sm text-gray-500">{day.blocks.length} activities</span>
           </div>
 
           {!collapsedDays.has(day.day) && (
@@ -200,20 +206,20 @@ export default function WeeklyRoutinePreview({ data }: WeeklyRoutinePreviewProps
       <div className="space-y-4">
         {/* Grid View */}
         <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg overflow-hidden">
-          <div className="overflow-auto max-h-[70vh]">
+          <div className="">
             <div className="min-w-max">
               {/* Header */}
               <div
-                className="grid bg-slate-200 sticky top-0 z-20"
+                className="grid bg-gray-200 sticky top-0 z-20"
                 style={{ gridTemplateColumns: `120px repeat(${data.days.length}, 140px)` }}
               >
-                <div className="bg-slate-50 p-3 text-xs font-medium text-slate-600 text-center sticky left-0 z-30 border-r border-slate-200">
+                <div className="bg-gray-50 p-3 text-xs font-medium text-gray-600 text-center sticky left-0 z-30 border-r border-gray-200">
                   Time
                 </div>
                 {data.days.map((day) => (
                   <div
                     key={day.day}
-                    className="bg-slate-50 p-3 text-xs font-medium text-slate-700 text-center border-r border-slate-200 last:border-r-0"
+                    className="bg-gray-500 p-3 text-xs font-medium text-gray-700 text-center border-r border-gray-200 last:border-r-0"
                   >
                     {day.day}
                   </div>
@@ -222,12 +228,12 @@ export default function WeeklyRoutinePreview({ data }: WeeklyRoutinePreviewProps
 
               {/* Hour slots */}
               <div
-                className="bg-slate-200"
+                className="bg-gray-200"
                 style={{ display: "grid", gridTemplateColumns: `120px repeat(${data.days.length}, 140px)` }}
               >
                 {hourSlots.map((hourSlot, hourIndex) => (
                   <div key={hourSlot} className="contents">
-                    <div className="bg-white p-2 text-xs font-mono text-slate-500 text-center sticky left-0 z-10 border-r border-slate-200 border-b border-slate-200">
+                    <div className="bg-gray-200 p-2 text-xs font-mono text-gray-500 text-center sticky left-0 z-10 border-r border-gray-200 border-b border-gray-200">
                       {formatTime12Hour(hourSlot)}
                     </div>
                     {dayGridData.map((dayData, dayIndex) => {
@@ -236,7 +242,7 @@ export default function WeeklyRoutinePreview({ data }: WeeklyRoutinePreviewProps
                       return (
                         <div
                           key={`${dayData.day}-${hourSlot}`}
-                          className="relative min-h-[3rem] bg-white border-r border-slate-200 border-b border-slate-200 last:border-r-0"
+                          className="relative min-h-[3rem] bg-white border-r border-gray-200 border-b border-gray-200 last:border-r-0"
                           style={{ minHeight: "3rem" }}
                         >
                           {blocksInHour.map((block, blockIndex) => (
@@ -271,16 +277,16 @@ export default function WeeklyRoutinePreview({ data }: WeeklyRoutinePreviewProps
         </Card>
 
         {/* Legend */}
-        <Card className="p-3 bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+        {/* <Card className="p-3 bg-white/80 backdrop-blur-sm border-0 shadow-lg">
           <div className="grid grid-cols-2 gap-2 text-xs">
-            {Object.entries(categoryColors).map(([category, colorClass]) => (
+            {Object.entries(categoryColors).map(([category]) => (
               <div key={category} className="flex items-center gap-2">
                 <div className={`w-3 h-3 rounded-full ${categoryDots[category as keyof typeof categoryDots]}`} />
-                <span className="capitalize text-slate-600">{category}</span>
+                <span className="capitalize text-gray-600">{category}</span>
               </div>
             ))}
           </div>
-        </Card>
+        </Card> */}
       </div>
     )
   }
@@ -289,7 +295,7 @@ export default function WeeklyRoutinePreview({ data }: WeeklyRoutinePreviewProps
     <div className="space-y-4">
       {/* View Toggle */}
       <div className="flex justify-center">
-        <div className="bg-white/80 backdrop-blur-sm rounded-lg p-1 shadow-lg">
+        <div className="bg-white/80 backdrop-blur-sm rounded-lg p-1 shadow-lg text-black">
           <Button
             variant={viewMode === "desktop" ? "default" : "ghost"}
             size="sm"
