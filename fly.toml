@@ -1,13 +1,3 @@
 # Fly.io configuration file
 app = "ai-assistant-worker"
 primary_region = "iad"
-
-[build]
-  dockerfile = "worker/Dockerfile"
-
-# Environment variables (replace with actual values in Fly.io dashboard)
-[env]
-  SERVER_URL = "https://your-render-server-url"
-  LIVEKIT_API_KEY = "<your-livekit-api-key>"
-  LIVEKIT_API_SECRET = "<your-livekit-api-secret>"
-
