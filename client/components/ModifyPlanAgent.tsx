@@ -43,7 +43,7 @@ export function ModifyPlanAgent({ onPlanReady }: BuildPlanAgentProps){
         <div>
             {informationCollected && (
                 <div className='bg-black flex items-center justify-center min-h-screen'>
-                    <LoadingView centerMessage="take a few deep breaths" messages={["Analyzing Current Routine...", "Analyzing Aspirations...", "Adding Lifestyle Suggestions...", "Preparing your plan...", "Validating the plan...", "Loading your schedule...", "Almost there..."]} />
+                    <LoadingView centerMessage="take a few deep breaths" messages={["Analyzing Current Routine...", "Analyzing Changes...", "Finding best fit...", "Preparing your plan...", "Validating the plan...", "Loading your schedule...", "Almost there..."]} />
               </div>
             )}
             {!informationCollected && (

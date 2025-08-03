@@ -148,7 +148,7 @@ class ModifyPlanAgent(Agent):
                             response += chunk.delta.content
                             if(len(response) >= 3 and (validation_signal.startswith(response) or response.upper() == validation_signal or response.find(validation_signal) != -1)):
                                 #information collected
-                                print("stage 20 information collected")
+                                print("stage 30 information collected")
                                 self.journal_chat_ctx= chat_ctx
                                 if self._room is not None:
                                     await self._room.local_participant.send_text(topic="information_collected", text="information_collected")
