@@ -20,7 +20,7 @@ interface NavItem {
 }
 
 export default function SideNav() {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
 
   const items: NavItem[] = [
     { href: '/today', label: 'Today', icon: <Calendar className="w-5 h-5" /> },

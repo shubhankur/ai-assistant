@@ -11,6 +11,22 @@ const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 sgMail.setApiKey(process.env.SENDGRID_API_KEY)
 
 const SECRET = process.env.SECRET_KEY || 'secret';
+
+// Centralised cookie options so that domain/samesite/secure are consistent across all auth endpoints.
+// If you deploy the client and server on different subdomains (e.g. app.example.com and api.example.com)
+// you MUST set the COOKIE_DOMAIN environment variable to a shared parent domain (e.g. ".example.com") so
+// the browser will send the cookie to the API even when it originates from the client domain.
+// NOTE: When sameSite is set to "none" the cookie must be marked "secure" – browsers will reject otherwise.
+const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN;
+const baseCookieOptions = {
+  httpOnly: true,
+  sameSite: 'Lax',
+  secure: true,
+};
+if (COOKIE_DOMAIN) {
+  baseCookieOptions.domain = COOKIE_DOMAIN;
+}
+
 const KEY = crypto.createHash('sha256').update(String(SECRET)).digest();
 function encrypt(text) {
   const iv = crypto.randomBytes(16);
@@ -64,10 +80,10 @@ router.post('/login', async (req, res) => {
           await send_verification_email(email, code);
         }
         await user.save();
-        res.cookie('user', encrypt(String(user._id)), { httpOnly: true });
+        res.cookie('user', encrypt(String(user._id)), baseCookieOptions);
         return res.json({ message: 'verification_required' });
       }
-      res.cookie('user', encrypt(String(user._id)), { httpOnly: true });
+      res.cookie('user', encrypt(String(user._id)), baseCookieOptions);
       return res.json(user);
     }
     const name = email.split('@')[0];
@@ -81,7 +97,7 @@ router.post('/login', async (req, res) => {
     });
     console.log('User created', user._id);
     await send_verification_email(email, code);
-    res.cookie('user', encrypt(String(user._id)), { httpOnly: true });
+    res.cookie('user', encrypt(String(user._id)), baseCookieOptions);
     res.json({ message: 'verification_required' });
   } catch (err) {
     console.error('Login error:', err);
@@ -111,7 +127,7 @@ router.post('/verify', async (req, res) => {
     user.verificationCode = undefined;
     user.verification_code_expiry = undefined;
     await user.save();
-    res.cookie('user', encrypt(String(user._id)), { httpOnly: true });
+    res.cookie('user', encrypt(String(user._id)), baseCookieOptions);
     res.json({ message: 'verified', stage: user.stage, id: user._id, name: user.name, email: user.email });
   } catch (err) {
     console.error('Verify error:', err);
@@ -154,7 +170,7 @@ router.post('/reset', async (req, res) => {
     user.password = password;
     user.verificationCode = undefined;
     await user.save();
-    res.cookie('user', encrypt(String(user._id)), { httpOnly: true });
+    res.cookie('user', encrypt(String(user._id)), baseCookieOptions);
     res.json({ message: 'password_reset', stage: user.stage, id: user._id, name: user.name, email: user.email });
   } catch (err) {
     console.error('Reset password error:', err);
@@ -173,7 +189,7 @@ router.post('/google', async (req, res) => {
       const name = email.split('@')[0];
       user = await User.create({ email, name, gauth: true, verified: true });
     }
-    res.cookie('user', encrypt(String(user._id)), { httpOnly: true });
+    res.cookie('user', encrypt(String(user._id)), baseCookieOptions);
     res.json(user);
   } catch (err) {
     console.error('Google auth error:', err);
@@ -250,7 +266,7 @@ router.post('/resend-code', async (req, res) => {
 });
 
 router.post('/logout', (req, res) => {
-  res.clearCookie('user');
+  res.clearCookie('user', baseCookieOptions);
   res.json({ message: 'logged_out' });
 });
 
