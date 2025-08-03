@@ -84,7 +84,7 @@ function formatTime12Hour(timeStr: string): string {
 }
 
 export default function WeeklyRoutinePreview({ data }: WeeklyRoutinePreviewProps) {
-  const [viewMode, setViewMode] = useState<"desktop" | "mobile">("mobile")
+  const [viewMode, setViewMode] = useState<"desktop" | "mobile">("desktop")
   const [collapsedDays, setCollapsedDays] = useState<Set<string>>(new Set())
 
   const hourSlots = useMemo(() => generateHourSlots(), [])
@@ -206,7 +206,7 @@ export default function WeeklyRoutinePreview({ data }: WeeklyRoutinePreviewProps
       <div className="space-y-4">
         {/* Grid View */}
         <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg overflow-hidden">
-          <div className="overflow-auto max-h-[70vh]">
+          <div className="">
             <div className="min-w-max">
               {/* Header */}
               <div
@@ -219,7 +219,7 @@ export default function WeeklyRoutinePreview({ data }: WeeklyRoutinePreviewProps
                 {data.days.map((day) => (
                   <div
                     key={day.day}
-                    className="bg-gray-50 p-3 text-xs font-medium text-gray-700 text-center border-r border-gray-200 last:border-r-0"
+                    className="bg-gray-500 p-3 text-xs font-medium text-gray-700 text-center border-r border-gray-200 last:border-r-0"
                   >
                     {day.day}
                   </div>
@@ -233,7 +233,7 @@ export default function WeeklyRoutinePreview({ data }: WeeklyRoutinePreviewProps
               >
                 {hourSlots.map((hourSlot, hourIndex) => (
                   <div key={hourSlot} className="contents">
-                    <div className="bg-white p-2 text-xs font-mono text-gray-500 text-center sticky left-0 z-10 border-r border-gray-200 border-b border-gray-200">
+                    <div className="bg-gray-200 p-2 text-xs font-mono text-gray-500 text-center sticky left-0 z-10 border-r border-gray-200 border-b border-gray-200">
                       {formatTime12Hour(hourSlot)}
                     </div>
                     {dayGridData.map((dayData, dayIndex) => {
@@ -277,7 +277,7 @@ export default function WeeklyRoutinePreview({ data }: WeeklyRoutinePreviewProps
         </Card>
 
         {/* Legend */}
-        <Card className="p-3 bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+        {/* <Card className="p-3 bg-white/80 backdrop-blur-sm border-0 shadow-lg">
           <div className="grid grid-cols-2 gap-2 text-xs">
             {Object.entries(categoryColors).map(([category]) => (
               <div key={category} className="flex items-center gap-2">
@@ -286,7 +286,7 @@ export default function WeeklyRoutinePreview({ data }: WeeklyRoutinePreviewProps
               </div>
             ))}
           </div>
-        </Card>
+        </Card> */}
       </div>
     )
   }
@@ -295,7 +295,7 @@ export default function WeeklyRoutinePreview({ data }: WeeklyRoutinePreviewProps
     <div className="space-y-4">
       {/* View Toggle */}
       <div className="flex justify-center">
-        <div className="bg-white/80 backdrop-blur-sm rounded-lg p-1 shadow-lg">
+        <div className="bg-white/80 backdrop-blur-sm rounded-lg p-1 shadow-lg text-black">
           <Button
             variant={viewMode === "desktop" ? "default" : "ghost"}
             size="sm"
