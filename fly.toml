@@ -1,3 +1,0 @@
-# Fly.io configuration file
-app = "ai-assistant-worker"
-primary_region = "iad"

@@ -1,0 +1,4 @@
+.ai
+__pycache__/
+.env
+.vscode/
