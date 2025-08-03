@@ -30,14 +30,13 @@ export default function NavBar() {
   return (
     <nav className="bg-black text-white p-4 flex items-center justify-between relative">
       <button className="font-bold text-lg" onClick={() => window.location.assign('/')}>Ease In</button>
-      <button className="lg:hidden" onClick={() => setOpen(!open)}>
+      <button className="" onClick={() => setOpen(!open)}>
         &#9776;
       </button>
       <ul className={`lg:flex gap-4 overflow-hidden transition-all duration-500 ${open ? 'max-h-60' : 'max-h-0'} lg:max-h-full lg:block lg:static lg:bg-transparent absolute right-4 top-full bg-black rounded-md py-2`} style={{display: open ? 'block' : 'none'}}>
         {name && <li className="px-4 py-2 border-b lg:border-none">{name}</li>}
         <li className="px-4 py-2 lg:p-0"><Link href="/about">About</Link></li>
         <li className="px-4 py-2 lg:p-0"><Link href="/privacy">Privacy Policy</Link></li>
-        <li className="px-4 py-2 lg:p-0"><a href="https://twitter.com" target="_blank" rel="noopener noreferrer">Twitter</a></li>
         {name && <li className="px-4 py-2 lg:p-0"><button onClick={handleSignOut}>Sign Out</button></li>}
       </ul>
     </nav>
