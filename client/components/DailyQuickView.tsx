@@ -1,12 +1,6 @@
 import React, { useState } from "react";
 import { Calendar } from "lucide-react";
-import { DayPlan } from "@/app/today/page";
-import ConnectRoom from "./ConnectRoom";
-import { Button } from "./ui/button";
-import { AgentVisualizer } from "./AgentVisualizer";
-import { VoiceControlBar } from "./VoiceControlBar";
-import { DisconnectButton, VoiceAssistantControlBar } from "@livekit/components-react";
-import { Metadata } from "@/app/session/page";
+import { DayPlan } from "@/components/DayPage";
 
 /* ------------- Helpers ----------------- */
 const catColor: Record<string, string> = {
@@ -36,46 +30,8 @@ const to12h = (t: string) => {
 
 export function DailyQuickView (plan: DayPlan) {
   const [year, month, day] = plan.date.split('-')
-
-  console.log(plan.date)
-  console.log(new Date(plan.date).toLocaleDateString())
-  console.log(new Date(plan.date).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" }))
-  const [agent, setAgent] = useState<Boolean>(false);
-  const [metadata, setMetadata]= useState<Metadata>();
-  const activateAI = () => {
-      setAgent(true);
-      const metadataJsonString = `{"stage": "start_day_ai","current_plan": ${JSON.stringify(plan)}}`;
-      setMetadata(JSON.parse(metadataJsonString));
-  }
-  const deactivateAI = () => {
-    setAgent(false);
-    //If required send text to worker to disconnect
-  }
-
-  function DailyQuickViewAgent(){
-    return (
-      <div className="flex flex-col items-center">
-        <AgentVisualizer/>
-        <div className="flex items-center">
-          <VoiceControlBar/>
-          <DisconnectButton onClick={deactivateAI}>{'X'}</DisconnectButton>
-        </div>
-      </div>
-    )
-  }
-
   return(
   <div className="max-w-2xl mx-auto space-y-4">
-    <div className="flex items-center justify-center gap-2 text-white mb-2">
-    {agent && metadata &&
-        <ConnectRoom metadata={metadata}>
-          <DailyQuickViewAgent/>
-        </ConnectRoom>
-      }
-      {!agent &&
-        <Button variant="outline" className="bg-blue-600" onClick={activateAI}>Hey AI!</Button>
-      }
-    </div>
     <div className="flex items-center gap-2 text-white mb-2">
       <Calendar size={18} />
       <h2 className="text-xl font-semibold">{parseInt(month)}/{parseInt(day)}/{year}</h2>

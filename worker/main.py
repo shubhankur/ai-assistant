@@ -16,6 +16,7 @@ import json
 import asyncio
 import os
 from http_utils import api_get
+from modify_plan_agent.modify_plan_agent import ModifyPlanAgent
 load_dotenv('.env', override=True)
 
 def createSession() -> AgentSession :
@@ -112,7 +113,7 @@ async def entrypoint(ctx: agents.JobContext):
         ctx.room.on("participant_attributes_changed", participant_attributes_changed_sync)
         ctx.add_shutdown_callback(agent.on_shutdown)
         await agent.start(metadataJson)
-    elif(stage >= 10):
+    elif(stage == 10):
         session = createSession()
         agent = DailyPlanAgent(session)
         await session.start(
@@ -126,6 +127,23 @@ async def entrypoint(ctx: agents.JobContext):
                         close_on_disconnect=False
                     ),
                 )
+        agent.set_room(ctx.room)
+        await agent.start(metadataJson)
+    elif(stage >= 20):
+        session = createSession()
+        agent = ModifyPlanAgent(session)
+        await session.start(
+                    room=ctx.room,
+                    agent=agent,
+                    room_input_options=RoomInputOptions(
+                        # LiveKit Cloud enhanced noise cancellation
+                        # - If self-hosting, omit this parameter
+                        # - For telephony applications, use `BVCTelephony` for best results
+                        noise_cancellation=noise_cancellation.BVC(), 
+                        close_on_disconnect=False
+                    ),
+                )
+        ctx.add_shutdown_callback(agent.on_shutdown)
         agent.set_room(ctx.room)
         await agent.start(metadataJson)
 

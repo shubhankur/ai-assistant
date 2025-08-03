@@ -1,7 +1,7 @@
 'use client'
 import React, { useState, useEffect } from "react";
 import { SERVER_URL } from '@/utils/constants';
-import { DailyPlan } from "@/components/DailyPlan"; // adjust relative path as needed
+import { DailyTimeline } from "@/components/DailyTimeline"; // adjust relative path as needed
 import { DailyQuickView } from "@/components/DailyQuickView";   // assumes DailyPlanView component exists
 import ConnectRoom from "@/components/ConnectRoom";
 import { BuildPlanAgent } from "@/components/BuildPlanAgent";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Metadata } from "@/app/session/page";
 import { parseDate } from "@/utils/dateUtil";
 import { LoadingView } from "@/components/LoadingView";
+import { ModifyPlanAgent } from "./ModifyPlanAgent";
 
 /* --------------- Types --------------- */
 export type Category =
@@ -53,7 +54,8 @@ export default function DayPage(day : WhichDay) {
   const [userId, setUserId] = useState<string>("")
   const [buildPlanAgent, setBuildPlanAgent] = useState(false);
   const [modfiyPlanAgent, setModifyPlanAgent] = useState(false);
-  const [metadata, setMetadata] = useState<Metadata>();
+  const [buildPlanMetadata, setBuildPlanMetadata] = useState<Metadata>();
+  const [modifyPlanMetadata, setModifyPlanMetadata] = useState<Metadata>();
   const [initDone, setInitDone] = useState<boolean>();
 
 
@@ -101,15 +103,39 @@ export default function DayPage(day : WhichDay) {
       stage : "10",
       date : d.toLocaleDateString(),
       day : d.getDay(),
-      time : time,
+      time : d.toTimeString(),
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       locale: "en-US",
       isTomorrow : isTomorrow,
       userId: userId
     }
-    setMetadata(metadata);
+    setBuildPlanMetadata(metadata);
     setBuildPlanAgent(true);
-}
+  }
+
+  const activateAI = () =>{
+    const d = new Date()
+    let time = d.toTimeString()
+    let isTomorrow = "false"
+    let stage = "20"
+    if(day.tomorrow) {
+        d.setDate(d.getDate() + 1)
+        time = "00:00:00"
+        stage = "30"
+    }
+    const metadata : Metadata = {
+      stage : stage,
+      date : d.toLocaleDateString(),
+      day : d.getDay(),
+      time : time,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      locale: "en-US",
+      currentPlan:plan,
+      userId: userId
+    }
+    setModifyPlanMetadata(metadata);
+    setModifyPlanAgent(true);
+  }
 
   if(!initDone){
     return (
@@ -128,10 +154,11 @@ export default function DayPage(day : WhichDay) {
         </div>
       )}
       {buildPlanAgent && (
-        <ConnectRoom metadata={metadata}>
+        <ConnectRoom metadata={buildPlanMetadata}>
           <BuildPlanAgent onPlanReady={(p) => { setPlan(p); setBuildPlanAgent(false); }} />
         </ConnectRoom>
       )}
+
       {plan && (
         <div className="min-h-screen bg-black text-gray-100 p-6 space-y-6">
         {/* tabs */}
@@ -152,8 +179,29 @@ export default function DayPage(day : WhichDay) {
             </button>
           ))}
         </div>
+
+        {!modfiyPlanAgent &&(
+          <div className="flex items-center justify-center">
+            <Button variant="outline" className="bg-blue-600" onClick={activateAI}>Hey AI!</Button>
+          </div>
+        )}
+
+        {/* {!modfiyPlanAgent && !day.tomorrow &&(
+          <div className="flex items-center justify-center gap-4">
+            <Button variant="outline" className="bg-blue-600" onClick={activateAI}>Hey AI!</Button>
+          </div>
+        )}   */}
+
+        {modfiyPlanAgent && (
+          <ConnectRoom metadata={modifyPlanMetadata}>
+            <ModifyPlanAgent onPlanReady={(p) => { 
+                if(p) setPlan(p); 
+                setModifyPlanAgent(false); 
+              }} />
+          </ConnectRoom>
+        )}
         {/* view */}
-        {tab === "quick" ? <DailyQuickView {...plan} /> : <DailyPlan {...plan}/>}
+        {tab === "quick" ? <DailyQuickView {...plan} /> : <DailyTimeline {...plan}/>}
       </div>
       )}
     </div>

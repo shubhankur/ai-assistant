@@ -25,7 +25,8 @@ class DailyPlanAgent(Agent):
         super().__init__(instructions="")
         self._session = session
         self._room = None
-        self.today = None
+        self.week_day = None
+        self.date = None
         self.time = None
         self.timezone = None
         self.locale = None
@@ -86,7 +87,7 @@ class DailyPlanAgent(Agent):
                     async for chunk in stream:
                         if(chunk.delta and chunk.delta.content):
                             response += chunk.delta.content
-                            if(len(response) >= 3 and (validation_signal.startswith(response) or response.upper() == validation_signal)):
+                            if(len(response) >= 3 and (validation_signal.startswith(response) or response.upper() == validation_signal or response.find(validation_signal) != -1)):
                                 print("stage 10 information collected")
                                 if self._room is not None:
                                     await self._room.local_participant.send_text(topic="information_collected", text="information_collected")
@@ -108,8 +109,8 @@ class DailyPlanAgent(Agent):
             else:
                 #save to mongo
                 day_plan_json["userid"] = self.user_id
-                day_plan_json["date"] = self.today_date
-                day_plan_json["week_day"] = self.today
+                day_plan_json["date"] = self.date
+                day_plan_json["week_day"] = self.week_day
                 day_plan_json["timezone"] = self.timezone
                 day_plan_json["locale"] = self.locale
                 day_plan_json["version"] = 0
@@ -191,8 +192,8 @@ class DailyPlanAgent(Agent):
                 raise ValueError("Day must be between 0 and 6")
             
             days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-            self.today = days[day] 
-            print("today ", self.today)
+            self.week_day = days[day] 
+            print("today ", self.week_day)
             
             if "timezone" not in metadata_json:
                 raise KeyError("Timezone missing from metadata")
@@ -207,7 +208,7 @@ class DailyPlanAgent(Agent):
             
             try:
                 today_date = parse_date(metadata_json["date"], locale=loc)
-                self.today_date = format_date(today_date, format="yyyy-MM-dd", locale=loc)
+                self.date = format_date(today_date, format="yyyy-MM-dd", locale=loc)
             except ValueError as e:
                 raise ValueError(f"Error parsing dates: {str(e)}")
 

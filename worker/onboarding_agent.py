@@ -247,7 +247,7 @@ class OnboardingAgent(Agent):
                     async for chunk in stream:
                         if(chunk.delta and chunk.delta.content):
                             response += chunk.delta.content
-                            if(len(response) >= 3 and (validation_signal.startswith(response) or response.upper() == validation_signal)):
+                            if(len(response) >= 3 and (validation_signal.startswith(response) or response.upper() == validation_signal or response.find(validation_signal) != -1)):
                                 print("stage 3 satisfied")
                                 #update to stage4
                                 self.stage3_chat_ctx = chat_ctx
@@ -265,7 +265,7 @@ class OnboardingAgent(Agent):
                     async for chunk in stream:
                         if(chunk.delta and chunk.delta.content):
                             response += chunk.delta.content
-                            if(len(response) >= 3 and (validation_signal.startswith(response) or response.upper() == validation_signal)):
+                            if(len(response) >= 3 and (validation_signal.startswith(response) or response.upper() == validation_signal or response.find(validation_signal) != -1)):
                                 print("stage 4 satisfied")
                                 self.stage4_chat_context = chat_ctx
                                 await self.set_stage(5)

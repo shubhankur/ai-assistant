@@ -1,7 +1,7 @@
 'use client'
 import React, { useState, useEffect } from "react";
 import { SERVER_URL } from '@/utils/constants';
-import { DailyPlan } from "@/components/DailyPlan"; // adjust relative path as needed
+import { DailyTimeline } from "@/components/DailyTimeline"; // adjust relative path as needed
 import { DailyQuickView } from "@/components/DailyQuickView";   // assumes DailyPlanView component exists
 import ConnectRoom from "@/components/ConnectRoom";
 import { BuildPlanAgent } from "@/components/BuildPlanAgent";
@@ -148,7 +148,7 @@ export default function Tomorrow() {
           ))}
         </div>
         {/* view */}
-        {tab === "quick" ? <DailyQuickView {...plan} /> : <DailyPlan {...plan}/>}
+        {tab === "quick" ? <DailyQuickView {...plan} /> : <DailyTimeline {...plan}/>}
       </div>
       )}
     </div>
