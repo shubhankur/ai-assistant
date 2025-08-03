@@ -1,3 +1,4 @@
+'use client'
 import WeeklyRoutinePreview, { RoutineData } from "@/components/WeeklyRoutine";
 import { useEffect, useState } from "react";
 
