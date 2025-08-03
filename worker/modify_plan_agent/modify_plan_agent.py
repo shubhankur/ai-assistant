@@ -242,6 +242,7 @@ class ModifyPlanAgent(Agent):
                     journal_json["week_day"] = self.week_day
                     journal_json["timezone"] = self.timezone
                     journal_json["locale"] = self.locale
+                    journal_json["time"] = self.time
                     journal_json["version"] = 0
                     await save_to_server("/journals/save", journal_json)
             except Exception as e:
