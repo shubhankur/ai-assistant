@@ -35,7 +35,7 @@ export interface Block {
 export interface DayPlan {
   _id?: string;
   userid?: string;
-  date: string;   // ISO YYYY‑MM‑DD
+  date: string;   // YYYY‑MM‑DD
   week_day?: string;
   timezone?: string;
   locale?: string;
@@ -84,6 +84,25 @@ export default function DayPage(day : WhichDay) {
         if (res.ok) {
             const p = await res.json();
             setPlan(p);
+        } else {
+          //try to get from weekly routine
+          const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+          const week_day = days[date.getDay()]
+          const res = await fetch(`${SERVER_URL}/weeklyRoutines`, {
+            credentials: 'include',
+            });
+            if (res.ok) {
+              const weekly_routine = await res.json()
+              console.log(weekly_routine)
+              console.log(week_day)
+              const day_routine = weekly_routine[week_day]
+              let p: DayPlan = {
+                blocks:day_routine,
+                date:thisDay
+              }
+
+              setPlan(p)
+            }
         }
         setInitDone(true)
     }

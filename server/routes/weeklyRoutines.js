@@ -14,17 +14,18 @@ router.post('/save', async (req, res) => {
 
 router.get('/', async (req, res) => {
   try {
-    if (req.query.userid && req.query.date) {
-      const doc = await Model.findOne({ userid: req.query.userid, date: req.query.date });
-      if (!doc) return res.status(404).json({ error: 'Not found' });
-      return res.json(doc);
+    if (req.user.id && req.query.date) {
+      const docs = await Model.findOne({ userid: req.user.id, date: req.query.date }).sort({ created_at: -1 });
+      if (!docs || docs.length === 0) return res.status(404).json({ error: 'Not found' });
+      return res.json(docs[0]); // Return the most recent one
     }
-    if (req.query.userid) {
-      const docs = await Model.find({ userid: req.query.userid });
+    if (req.user.id) {
+      const docs = await Model.findOne({ userid: req.user.id }).sort({ created_at: -1 });
       return res.json(docs);
     }
-    const docs = await Model.find();
-    res.json(docs);
+    else {
+      return res.status(400).json({ error: 'Missing userid parameter' });
+    }
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

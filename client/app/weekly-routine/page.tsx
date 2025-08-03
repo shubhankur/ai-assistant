@@ -33,27 +33,19 @@ export default function WeeklyRoutinePage() {
       );
       if (res.ok) {
         const arr = await res.json();
-        if (Array.isArray(arr) && arr.length > 0) {
-          arr.sort(
-            (a: any, b: any) =>
-              new Date(b.created_at).getTime() -
-              new Date(a.created_at).getTime()
-          );
-          const latest = arr[0];
-          const data: RoutineData = {
-            days: daysOfWeek.map((day) => ({
-              day,
-              blocks: (latest[day] || []).map((blk: any) => ({
-                start: blk.start,
-                end: blk.end,
-                label: blk.name,
-                category: blk.category,
-                location: blk.location,
-              })),
+        const data: RoutineData = {
+          days: daysOfWeek.map((day) => ({
+            day,
+            blocks: (arr[day] || []).map((blk: any) => ({
+              start: blk.start,
+              end: blk.end,
+              label: blk.name,
+              category: blk.category,
+              location: blk.location,
             })),
-          };
-          setRoutine(data);
-        }
+          })),
+        };
+        setRoutine(data);
       }
     }
     fetchRoutine();
