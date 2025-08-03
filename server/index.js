@@ -45,9 +45,12 @@ app.use('/desiredHabitChanges', authMiddleware, desiredHabitChanges);
 app.use('/ongoingChanges', authMiddleware, ongoingChanges);
 app.use('/weeklyRoutines', authMiddleware, weeklyRoutines);
 app.use('/journals', authMiddleware, journals);
+  app.get('/health', (req, res) => res.send('OK'));
 
 
-const PORT = 5005;
+
+const PORT = process.env.PORT || 5005;
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
