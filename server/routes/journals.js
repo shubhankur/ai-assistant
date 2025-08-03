@@ -49,4 +49,17 @@ router.get('/fetchByDate', async (req, res) => {
   }
 });
 
+// Fetch all journals for the authenticated user sorted by date and creation time
+router.get('/fetchAll', async (req, res) => {
+  try {
+    const docs = await Journal.find({ userid: req.user._id }).sort({
+      date: -1,
+      created_at: -1
+    });
+    return res.json(docs);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+});
+
 module.exports = router;
