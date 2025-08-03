@@ -1,0 +1,6 @@
+# Python
+lib64/
+
+# Virtual Environment
+.env
+.ai/

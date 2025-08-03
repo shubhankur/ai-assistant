@@ -11,13 +11,11 @@ from livekit.rtc.participant import Participant
 from collections.abc import AsyncGenerator
 from livekit.agents.types import NOT_GIVEN
 from datetime import datetime, timedelta
-from dotenv import load_dotenv
 from babel.dates   import parse_date, format_date
 from onboarding_agent_helper import save_to_server
 
 
 from onboarding_prompts import ONBOARDING_PROMPTS
-load_dotenv('.env', override=True)
 
 
 class OnboardingAgent(Agent):

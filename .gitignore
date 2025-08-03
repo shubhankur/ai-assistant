@@ -1,21 +1,19 @@
-# Python
 __pycache__/
-lib/
-lib64/
-
-# Virtual Environment
+# IDE
+.vscode/
+*.swp
+*.swo
+.DS_Store
 .env
 .env.local
 .venv
 env/
 venv/
 ENV/
-.livekit/
-worker/.ai/
 
 # IDE
 .vscode/
 *.swp
 *.swo
 .DS_Store
-server/node_modules/
+node_modules/

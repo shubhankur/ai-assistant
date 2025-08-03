@@ -11,7 +11,6 @@ from livekit.rtc.participant import Participant
 from collections.abc import AsyncGenerator
 from livekit.agents.types import NOT_GIVEN
 from datetime import datetime, timedelta
-from dotenv import load_dotenv
 from babel.dates   import parse_date, format_date
 
 from modify_plan_agent.modify_plan_helper import save_to_server
