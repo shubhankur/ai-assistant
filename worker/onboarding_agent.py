@@ -93,7 +93,9 @@ class OnboardingAgent(Agent):
         if(self.stage == 5):
             await self.handle_post_stage4(chat_ctx)
     
-    async def start(self, metadata_json : json) -> None:
+    async def start(self, metadata_json : dict) -> None:
+        if(self._room is None):
+            raise Exception("Room is not set for the agent.")
         try:
             self.user_id = metadata_json["userId"]
             #verify participant id
@@ -154,6 +156,9 @@ class OnboardingAgent(Agent):
                 timeout=120.0,          # <= raise per-request limit
                 max_retry=3,            # keep whatever retry policy you like
                 retry_interval=2.0
+            )
+            assert isinstance(self._session.llm, llm.LLM), (
+                "llm_complete should only be used with LLM (non-multimodal/realtime APIs) nodes"
             )
             stream = self._session.llm.chat(chat_ctx=local_ctx, conn_options=llm_conn_options)
             parts: list[str] = []
@@ -242,7 +247,7 @@ class OnboardingAgent(Agent):
                     async for chunk in stream:
                         if(chunk.delta and chunk.delta.content):
                             response += chunk.delta.content
-                            if(len(response) >= 3 and (validation_signal.startswith(response) or response.upper() == validation_signal)):
+                            if(len(response) >= 3 and (validation_signal.startswith(response) or response.upper() == validation_signal or response.find(validation_signal) != -1)):
                                 print("stage 3 satisfied")
                                 #update to stage4
                                 self.stage3_chat_ctx = chat_ctx
@@ -260,7 +265,7 @@ class OnboardingAgent(Agent):
                     async for chunk in stream:
                         if(chunk.delta and chunk.delta.content):
                             response += chunk.delta.content
-                            if(len(response) >= 3 and (validation_signal.startswith(response) or response.upper() == validation_signal)):
+                            if(len(response) >= 3 and (validation_signal.startswith(response) or response.upper() == validation_signal or response.find(validation_signal) != -1)):
                                 print("stage 4 satisfied")
                                 self.stage4_chat_context = chat_ctx
                                 await self.set_stage(5)
@@ -275,6 +280,11 @@ class OnboardingAgent(Agent):
     
     async def handle_stage4(self, chat_ctx):
         print("Time: ", self.time)
+        if(self.time is None):
+            self.time="11:00:00"
+            print("WARN: Agent does not have time data")
+        if(self.today is None or self.tomorrow is None):
+            raise Exception("Agent does not have today and tomorrow set")
         #ToDo: even though it was 12;30 it generated plan for Today.
         if datetime.strptime(self.time, "%H:%M:%S").time() < datetime.strptime("12:00:00", "%H:%M:%S").time():
             today_plan_json = await self.get_daily_plan(self.today, chat_ctx)
@@ -318,45 +328,51 @@ class OnboardingAgent(Agent):
                     print("WARN: _room is None, cannot send tomorrow_plan")
                 
     async def handle_post_stage4(self, chat_ctx : ChatContext):
-        if(self.today_plan_json is None):
-            try:
-                today_plan_json = await self.get_daily_plan(self.today, chat_ctx)
-                if(today_plan_json is None):
-                    #ToDo: Maybe ask to regenerate
-                    print("Error: today_plan_response was not a valid json")
-                else:
-                    self.today_plan_json = today_plan_json
-                    print("today_plan response generated")
-                    today_plan_json["userid"] = self.user_id
-                    today_plan_json["date"] = self.today_date
-                    today_plan_json["week_day"] = self.today
-                    today_plan_json["timezone"] = self.timezone
-                    today_plan_json["locale"] = self.locale
-                    today_plan_json["version"] = 0
-                    # Save today_plan_json to server
-                    await save_to_server("dailyPlans/save", today_plan_json)
-            except Exception as e:
-                print(f"Failed to get today's plan: {str(e)}")
+        if(self.today_plan_json is None and self.today is not None):
+            if(self.tomorrow is None):
+                print("WARN: Agent does nto haver today set")
+            else:
+                try:
+                    today_plan_json = await self.get_daily_plan(self.today, chat_ctx)
+                    if(today_plan_json is None):
+                        #ToDo: Maybe ask to regenerate
+                        print("Error: today_plan_response was not a valid json")
+                    else:
+                        self.today_plan_json = today_plan_json
+                        print("today_plan response generated")
+                        today_plan_json["userid"] = self.user_id
+                        today_plan_json["date"] = self.today_date
+                        today_plan_json["week_day"] = self.today
+                        today_plan_json["timezone"] = self.timezone
+                        today_plan_json["locale"] = self.locale
+                        today_plan_json["version"] = 0
+                        # Save today_plan_json to server
+                        await save_to_server("dailyPlans/save", today_plan_json)
+                except Exception as e:
+                    print(f"Failed to get today's plan: {str(e)}")
         
         if(self.tomorrow_plan_json is None):
-            try:
-                tomorrow_plan_json = await self.get_daily_plan(self.tomorrow, chat_ctx)
-                if(tomorrow_plan_json is None):
-                    #ToDo: Maybe ask to regenerate
-                    print("Error: tomorrow_plan_response was not a valid json")
-                else:
-                    self.tomorrow_plan_json = tomorrow_plan_json
-                    print("tomorrow_plan response generated")
-                    tomorrow_plan_json["userid"] = self.user_id
-                    tomorrow_plan_json["date"] = self.tomorrow_date
-                    tomorrow_plan_json["week_day"] = self.tomorrow
-                    tomorrow_plan_json["timezone"] = self.timezone
-                    tomorrow_plan_json["locale"] = self.locale
-                    tomorrow_plan_json["version"] = 0
-                    # Save tomorrow_plan_json to server
-                    await save_to_server("dailyPlans/save", tomorrow_plan_json)
-            except Exception as e:
-                print(f"Failed to get today's plan: {str(e)}")
+            if(self.tomorrow is None):
+                print("WARN: Agentr does nto haver tomorrow set")
+            else:
+                try:
+                    tomorrow_plan_json = await self.get_daily_plan(self.tomorrow, chat_ctx)
+                    if(tomorrow_plan_json is None):
+                        #ToDo: Maybe ask to regenerate
+                        print("Error: tomorrow_plan_response was not a valid json")
+                    else:
+                        self.tomorrow_plan_json = tomorrow_plan_json
+                        print("tomorrow_plan response generated")
+                        tomorrow_plan_json["userid"] = self.user_id
+                        tomorrow_plan_json["date"] = self.tomorrow_date
+                        tomorrow_plan_json["week_day"] = self.tomorrow
+                        tomorrow_plan_json["timezone"] = self.timezone
+                        tomorrow_plan_json["locale"] = self.locale
+                        tomorrow_plan_json["version"] = 0
+                        # Save tomorrow_plan_json to server
+                        await save_to_server("dailyPlans/save", tomorrow_plan_json)
+                except Exception as e:
+                    print(f"Failed to get today's plan: {str(e)}")
         
         if(self.habit_reformation_json is None):
             #2. Generate Ongoing Reformation list, Save to Mongo
@@ -388,17 +404,20 @@ class OnboardingAgent(Agent):
                     weekly_plan_json["userid"] = self.user_id
                     weekly_plan_json["timezone"] = self.timezone
                     days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] #Mon is the start of the week.
-                    day_idx = days.index(self.today)
+                    day_idx = days.index(self.today if self.today is not None else 'Mon')
                     today_date = self.today_date_parsed
-                    week_start_date = today_date - timedelta(days=day_idx)
-                    week_start_date = format_date(week_start_date, format="yyyy-MM-dd", locale=self.locale.replace("-", "_"))
-                    weekly_plan_json["date"] = week_start_date
+                    if today_date is not None:
+                        week_start_date = today_date - timedelta(days=day_idx)
+                        week_start_date_str = format_date(week_start_date, format="yyyy-MM-dd", locale=self.locale.replace("-", "_") if self.locale is not None else "en_US")
+                        weekly_plan_json["date"] = week_start_date_str
+                    else:
+                        print("WARN: today_date_parsed is None, cannot calculate week start date")
                     weekly_plan_json["locale"] = self.locale
                     await save_to_server("weeklyRoutines/save", weekly_plan_json)
             except Exception as e:
                 print(f"Failed to generate weekly plan: {str(e)}")
 
-    async def get_daily_plan(self, input_day : str, chat_ctx : llm.ChatContext) -> json:
+    async def get_daily_plan(self, input_day : str, chat_ctx : llm.ChatContext) -> dict | None:
         day_plan_prompt = ONBOARDING_PROMPTS["today_plan"].format(day=input_day)
         day_plan_res = await self._llm_complete(day_plan_prompt, chat_ctx)
         print( input_day + " Plan Res Received")
@@ -415,7 +434,7 @@ class OnboardingAgent(Agent):
     
     async def add_system_message(self, chat_ctx: llm.ChatContext, message:str):
         chat_ctx.add_message(role="system", content=message)
-        await self._session._agent.update_chat_ctx(chat_ctx=chat_ctx)
+        await self.update_chat_ctx(chat_ctx=chat_ctx)
     
     async def update_stage(self, stage_num:int, chat_ctx: llm.ChatContext):
         print("Moving to stage ", stage_num)

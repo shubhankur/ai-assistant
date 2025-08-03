@@ -6,6 +6,7 @@ const CurrentRoutine = require('../models/currentRoutine');
 const DesiredHabitChange = require('../models/userDesiredHabitChanges');
 const OngoingChange = require('../models/userOngoingChanges');
 const WeeklyRoutine = require('../models/weeklyRoutine');
+const Journal = require('../models/journal');
 
 const router = express.Router();
 
@@ -21,7 +22,7 @@ router.post('/dailyPlans/save', async (req, res) => {
     const existingPlan = await DailyPlan.findOne({
       userid: dailyPlanData.userid,
       date: dailyPlanData.date
-    });
+    }).sort({ version: -1 });
 
     if (existingPlan) {
       // Increment version number
@@ -69,6 +70,48 @@ router.post('/ongoingChanges/save', async (req, res) => {
 router.post('/weeklyRoutines/save', async (req, res) => {
   try {
     const doc = await WeeklyRoutine.create(req.body);
+    return res.status(201).json(doc);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+});
+
+// ---- Get Latest Weekly Routine ----
+router.get('/weeklyRoutines/get', async (req, res) => {
+  try {
+    const userId = req.query.userId;
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'userId query parameter is required' });
+    }
+
+    const doc = await WeeklyRoutine.findOne({ userid: userId })
+      .sort({ createdAt: -1 }); // Sort by creation date descending to get most recent
+    
+    if (!doc) {
+      return res.status(404).json({ error: 'No weekly routine found for this user' });
+    }
+    
+    return res.status(200).json(doc);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+});
+
+// ---- Journals ----
+router.post('/journals/save', async (req, res) => {
+  try {
+    const journalData = req.body;
+    const existing = await Journal.findOne({
+      userid: journalData.userid,
+      date: journalData.date
+    }).sort({ version: -1 });
+
+    if (existing) {
+      journalData.version = (existing.version || 0) + 1;
+    }
+
+    const doc = await Journal.create(journalData);
     return res.status(201).json(doc);
   } catch (err) {
     return res.status(400).json({ error: err.message });

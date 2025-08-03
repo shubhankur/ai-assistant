@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { ArrowRight, ArrowDown } from "lucide-react";
 import { v4 as uuid } from "uuid";
-import { Category, DayPlan, Block } from "@/app/today/page";
+import { Category, DayPlan, Block } from "@/components/DayPage";
 import { SERVER_URL } from "@/utils/constants";
 
 /* ------------------------ Style Map ---------------------------------- */
@@ -40,7 +40,7 @@ interface BlockWithGroupId extends Block {
     groupId: string;
 }
 
-export function DailyPlan(plan: DayPlan) {
+export function DailyTimeline(plan: DayPlan) {
     // ensure every block has groupId
     const [year, month, day] = plan.date.split('-')
     const [state, setState] = useState<BlockWithGroupId[]>();

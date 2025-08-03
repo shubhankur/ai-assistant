@@ -6,6 +6,7 @@ import { SessionAgent } from '@/components/SessionAgent';
 import Intro from '@/components/Intro';
 import { updateStageAtDB } from '@/utils/serverApis';
 import { SERVER_URL } from '@/utils/constants';
+import { DayPlan } from '@/components/DayPage';
 
 export interface Metadata {
   stage:string,
@@ -14,6 +15,8 @@ export interface Metadata {
   time: string,
   timezone: string,
   locale : string,
+  isTomorrow? : string,
+  currentPlan?: DayPlan,
   userId: string
 }
 

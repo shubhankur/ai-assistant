@@ -1,7 +1,7 @@
 import { AgentVisualizer } from '@/components/AgentVisualizer';
 import {useVoiceAssistant, useTextStream, useRoomContext} from '@livekit/components-react';
 import React, { useEffect, useState } from 'react';
-import { DayPlan } from '@/app/today/page';
+import { DayPlan } from './DayPage';
 import TranscriptionView from '@/components/TranscriptionView'
 import { VolumeWarning } from '@/components/VolumeWarning';
 import { VoiceControlBar } from '@/components/VoiceControlBar';

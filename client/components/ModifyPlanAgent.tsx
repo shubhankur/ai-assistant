@@ -13,19 +13,24 @@ interface BuildPlanAgentProps {
     onPlanReady: (plan: DayPlan) => void;
 }
 
-export function BuildPlanAgent({ onPlanReady }: BuildPlanAgentProps){
+export function ModifyPlanAgent({ onPlanReady }: BuildPlanAgentProps){
     const {state} = useVoiceAssistant();
     const [informationCollected, setInformationCollected] = useState<boolean>(false)
-    const {textStreams : todayPlanStream} = useTextStream("day_plan");
+    const {textStreams : newPlanStream} = useTextStream("new_plan");
     const {textStreams : informationCollectedStream} = useTextStream("information_collected");
 
     useEffect(() => {
-        if (todayPlanStream.length != 0) {
-          const latest = todayPlanStream[todayPlanStream.length - 1].text;
-          const parsed : DayPlan = JSON.parse(latest);
-          onPlanReady(parsed);
+        if (newPlanStream.length != 0) {
+          const latest = newPlanStream[newPlanStream.length - 1].text;
+          if(latest.toLowerCase() == "no_modification") {
+            onPlanReady(null)
+          }
+          else {
+            const parsed : DayPlan = JSON.parse(latest);
+            onPlanReady(parsed);
+          }
         }
-    },[todayPlanStream, onPlanReady])
+    },[newPlanStream, onPlanReady])
 
     useEffect(() => {
         if (informationCollectedStream.length != 0) {
@@ -38,7 +43,7 @@ export function BuildPlanAgent({ onPlanReady }: BuildPlanAgentProps){
         <div>
             {informationCollected && (
                 <div className='bg-black flex items-center justify-center min-h-screen'>
-                    <LoadingView centerMessage="take a few deep breaths" messages={["Analyzing Current Routine...", "Analyzing Aspirations...", "Adding Lifestyle Suggestions...", "Preparing your plan...", "Validating the plan...", "Loading your schedule...", "Almost there..."]} />
+                    <LoadingView centerMessage="take a few deep breaths" messages={["Analyzing Current Routine...", "Analyzing Changes...", "Finding best fit...", "Preparing your plan...", "Validating the plan...", "Loading your schedule...", "Almost there..."]} />
               </div>
             )}
             {!informationCollected && (
