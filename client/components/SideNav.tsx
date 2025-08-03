@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, ReactNode } from 'react';
 import {
   Calendar,
   CalendarClock,
@@ -16,7 +16,7 @@ import {
 interface NavItem {
   href: string;
   label: string;
-  icon: JSX.Element;
+  icon: ReactNode;
 }
 
 export default function SideNav() {
