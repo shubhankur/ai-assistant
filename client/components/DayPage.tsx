@@ -92,16 +92,20 @@ export default function DayPage(day : WhichDay) {
             credentials: 'include',
             });
             if (res.ok) {
-              const weekly_routine = await res.json()
-              console.log(weekly_routine)
-              console.log(week_day)
-              const day_routine = weekly_routine[week_day]
-              let p: DayPlan = {
-                blocks:day_routine,
-                date:thisDay
-              }
+              try {
+                const weekly_routine = await res.json()
+                console.log(weekly_routine)
+                console.log(week_day)
+                const day_routine = weekly_routine[week_day]
+                let p: DayPlan = {
+                  blocks: day_routine,
+                  date: thisDay
+                }
 
-              setPlan(p)
+                setPlan(p)
+              } catch (error) {
+                // do nothing
+              }
             }
         }
         setInitDone(true)

@@ -32,20 +32,24 @@ export default function WeeklyRoutinePage() {
         { credentials: 'include' }
       );
       if (res.ok) {
-        const arr = await res.json();
-        const data: RoutineData = {
-          days: daysOfWeek.map((day) => ({
-            day,
-            blocks: (arr[day] || []).map((blk: any) => ({
-              start: blk.start,
-              end: blk.end,
-              label: blk.name,
-              category: blk.category,
-              location: blk.location,
+        try {
+          const arr = await res.json();
+          const data: RoutineData = {
+            days: daysOfWeek.map((day) => ({
+              day,
+              blocks: (arr[day] || []).map((blk: any) => ({
+                start: blk.start,
+                end: blk.end,
+                label: blk.name,
+                category: blk.category,
+                location: blk.location,
+              })),
             })),
-          })),
-        };
-        setRoutine(data);
+          };
+          setRoutine(data);
+        } catch (error) {
+          // do nothing
+        }
       }
     }
     fetchRoutine();
