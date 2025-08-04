@@ -28,7 +28,7 @@ MODIFY_PLAN_PROMPTS = {
         '''
             If there was no modifications made to the plan, just return "NOT_AVAILABLE"
             If there was modifications made to the plan, return a JSON Object according to the schema below.
-            Remember that you should modify ONLY and ONLY what user has asked you to or confirmed you about AND modifications should only be for the remainig day. You should not touch the routine before the current time.
+            Remember that you should modify ONLY and ONLY what user has asked you to or confirmed you about.
             "blocks": [
                 {{
                 "start": "HH:MM", // add '+1' if overflows to the next day, for example, "02:00+1"
