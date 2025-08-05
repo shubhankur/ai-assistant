@@ -109,7 +109,7 @@ export function Login({ initialVerify = false }: { initialVerify?: boolean } = {
           <input
             type="email"
             placeholder="Email"
-            className="p-3 rounded-xl bg-white/20 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            className="p-3 rounded-xl bg-white/20 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
@@ -117,7 +117,7 @@ export function Login({ initialVerify = false }: { initialVerify?: boolean } = {
           <input
             type="password"
             placeholder="Password"
-            className="p-3 rounded-xl bg-white/20 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            className="p-3 rounded-xl bg-white/20 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
@@ -125,11 +125,11 @@ export function Login({ initialVerify = false }: { initialVerify?: boolean } = {
 
           <button
             type="submit"
-            className="mt-2 py-3 rounded-xl bg-indigo-500 hover:bg-indigo-600 transition font-semibold text-white"
+            className="mt-2 py-3 rounded-xl bg-white text-black hover:bg-gray-200 transition font-semibold"
           >
             {loading ? 'Loading...' : 'Sign In / Sign Up'}
           </button>
-          <button type="button" onClick={handleForgot} className="text-sm text-blue-300 hover:underline">Forgot password?</button>
+          <button type="button" onClick={handleForgot} className="text-sm text-gray-300 hover:underline">Forgot password?</button>
         </form>
   
         {/* Divider */}
@@ -170,7 +170,7 @@ export function Login({ initialVerify = false }: { initialVerify?: boolean } = {
                 shape="pill"
                 width="250"
                 useOneTap={true}
-                theme="filled_blue"
+                theme="filled_black"
                 type="standard"
                 click_listener={onGoogleClick}
             />
@@ -194,7 +194,7 @@ export function Login({ initialVerify = false }: { initialVerify?: boolean } = {
                 }>Resend</button></p>}
               <div className="flex justify-end gap-2">
                 <button className="px-4 py-1 bg-gray-600 rounded" onClick={()=>setVerifying(false)}>Cancel</button>
-                <button className="px-4 py-1 bg-blue-600 rounded" onClick={handleVerify}>Verify</button>
+                <button className="px-4 py-1 bg-white text-black rounded" onClick={handleVerify}>Verify</button>
               </div>
             </div>
           </div>
@@ -209,7 +209,7 @@ export function Login({ initialVerify = false }: { initialVerify?: boolean } = {
                   <input className="p-2 rounded-md bg-gray-700 text-white focus:outline-none" value={forgotEmail} onChange={e=>setForgotEmail(e.target.value)} />
                   <div className="flex justify-end gap-2">
                     <button className="px-4 py-1 bg-gray-600 rounded" onClick={()=>setForgotStage(0)}>Cancel</button>
-                    <button className="px-4 py-1 bg-blue-600 rounded" onClick={sendForgot}>Send Code</button>
+                    <button className="px-4 py-1 bg-white text-black rounded" onClick={sendForgot}>Send Code</button>
                   </div>
                   {error && <span className="text-red-400 text-sm">{error}</span>}
                 </>
@@ -225,7 +225,7 @@ export function Login({ initialVerify = false }: { initialVerify?: boolean } = {
                         setForgotStage(0)
                         }}
                         >Cancel</button>
-                    <button className="px-4 py-1 bg-blue-600 rounded" onClick={handleReset}>Reset</button>
+                    <button className="px-4 py-1 bg-white text-black rounded" onClick={handleReset}>Reset</button>
                   </div>
                   {error && <span className="text-red-400 text-sm">{error}</span>}
                 </>
