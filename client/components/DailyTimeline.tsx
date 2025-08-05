@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { ArrowRight, ArrowDown } from "lucide-react";
+import { ArrowRight, ArrowDown, Pencil } from "lucide-react";
 import { v4 as uuid } from "uuid";
 import { Category, DayPlan, Block } from "@/components/DayPage";
 import { SERVER_URL } from "@/utils/constants";
@@ -36,14 +36,11 @@ const fmt = (d: Date) => d.toLocaleTimeString("en-US", { hour: "numeric", minute
 
 /* ------------------------ Component ---------------------------------- */
 
-interface BlockWithGroupId extends Block {
-    groupId: string;
-}
-
 export function DailyTimeline(plan: DayPlan) {
     // ensure every block has groupId
     const [year, month, day] = plan.date.split('-')
-    const [state, setState] = useState<BlockWithGroupId[]>();
+    const [state, setState] = useState<Block[]>();
+    const [slotStatus, setSlotStatus] = useState<Record<string, boolean>>({});
 
     const open_blk = {
         start:"",
@@ -71,23 +68,41 @@ export function DailyTimeline(plan: DayPlan) {
                 return mins < 240 ? `${time}+1` : time;
             }
         };
-        const init: BlockWithGroupId[] = received_blocks.map(block => ({
+        const init: Block[] = received_blocks.map(block => ({
             ...block,
             start: addPlusIfNeeded(block.start),
             end: addPlusIfNeeded(block.end),
-            groupId: uuid()
+            groupId: block.groupId || uuid()
         }));
         setState(init);
     }, [plan]);
+
+    useEffect(() => {
+        async function fetchSlots(){
+            if(!plan._id) return;
+            try{
+                const res = await fetch(`${SERVER_URL}/slots/${plan._id}`, {credentials:'include'});
+                if(res.ok){
+                    const data = await res.json();
+                    const map: Record<string, boolean> = {};
+                    data.forEach((sl: any) => { map[sl.start] = sl.completed; });
+                    setSlotStatus(map);
+                }
+            } catch(err){
+                console.error(err);
+            }
+        }
+        fetchSlots();
+    }, [plan._id]);
 
     const [editing, setEditing] = useState<number | null>(null);
     const inputRef = useRef<HTMLTextAreaElement | null>(null);
 
     // Persist updated plan to server, incrementing version automatically
-    const persistPlan = async (blocks: BlockWithGroupId[]) => {
+    const persistPlan = async (blocks: Block[]) => {
         try {
             // Strip internal UI fields before sending
-            const cleanBlocks: Block[] = blocks.map(({ groupId, ...rest }) => rest);
+            const cleanBlocks: Block[] = blocks.map(b => ({ ...b }));
             const payload = {
                 date: plan.date,
                 week_day: plan.week_day,
@@ -125,7 +140,7 @@ export function DailyTimeline(plan: DayPlan) {
     const endTs = firstSleep ? hhmmToDate(firstSleep.start).getTime() : hhmmToDate(sorted.at(-1)!.end).getTime();
     type Slot = {
         time: string,
-        block?: BlockWithGroupId,
+        block?: Block,
         idx?: number,
         slotStart: Date
     };
@@ -159,12 +174,12 @@ export function DailyTimeline(plan: DayPlan) {
     console.log(slots)
 
     /* split helper */
-    const splitBlock = (blocks: BlockWithGroupId[], idx: number, slotStart: Date): BlockWithGroupId[] => {
+    const splitBlock = (blocks: Block[], idx: number, slotStart: Date): Block[] => {
         const blk = blocks[idx];
         const st = hhmmToDate(blk.start), ed = hhmmToDate(blk.end);
         if (ed.getTime() - st.getTime() === MS30) return blocks;
         const slotEnd = new Date(slotStart.getTime() + MS30);
-        const frags: BlockWithGroupId[] = [];
+        const frags: Block[] = [];
         if (st < slotStart) frags.push({ 
             ...blk, 
             end: dateToHHMM(slotStart), 
@@ -187,17 +202,19 @@ export function DailyTimeline(plan: DayPlan) {
 
     /* handlers */
     const saveOne = (si: number) => {
-        const sl = slots[si]; 
+        const sl = slots[si];
         if (sl.idx === undefined || !inputRef.current) return;
         let next = splitBlock(state, sl.idx, sl.slotStart);
         const startKey = dateToHHMM(sl.slotStart);
         const bi = next.findIndex(b => b.start === startKey);
-        next[bi] = { ...next[bi], name: inputRef.current.value.trim() || next[bi].name };
+        const newName = inputRef.current.value.trim();
+        const changed = newName && sl.block && newName !== sl.block.name;
+        next[bi] = { ...next[bi], name: newName || next[bi].name, groupId: changed ? uuid() : next[bi].groupId };
         setState(next); persistPlan(next); setEditing(null);
     };
     
     const saveAll = (si: number) => {
-        const sl = slots[si]; 
+        const sl = slots[si];
         if (!sl.block || !inputRef.current) return;
         const gid = sl.block.groupId;
         const newName = inputRef.current.value.trim();
@@ -210,31 +227,63 @@ export function DailyTimeline(plan: DayPlan) {
         persistPlan(next);
         setEditing(null);
     };
+    const toggleSlot = async (key: string, sl: Slot, checked: boolean) => {
+        setSlotStatus(prev => ({ ...prev, [key]: checked }));
+        try {
+            await fetch(`${SERVER_URL}/slots/complete`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                    dailyPlanId: plan._id,
+                    start: dateToHHMM(sl.slotStart),
+                    end: sl.block?.end,
+                    name: sl.block?.name,
+                    category: sl.block?.category,
+                    completed: checked
+                })
+            });
+        } catch (err) {
+            console.error(err);
+        }
+    };
     console.log(editing)
     /* render */
     return (
         <div className="max-w-xl mx-auto bg-gray-900 rounded-xl p-4 space-y-2 text-gray-100">
             <h2 className="text-lg font-semibold mb-2 select-none">{parseInt(month)}/{parseInt(day)}/{year}</h2>
             {slots.map((s, i) => (
-                <div key={i} className="flex items-start gap-3">
+                <div key={i} className="flex items-center gap-3">
                     <div className="w-20 text-xs text-gray-400 select-none">{s.time}</div>
-                    {!s.block ? (
-                        <button className="flex-1 border border-dashed border-gray-600 rounded-md h-6 hover:ring-2 ring-white/40" />
-                    ) : (
-                        <div className="relative flex-1">
-                            {editing === i ? (
-                                <>
-                                    <textarea ref={inputRef} defaultValue={s.block.name} rows={2} className={`w-full rounded-md p-2 text-xs resize-none ${catBg[s.block.category]}`} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); saveOne(i); } }} />
-                                    <div className="absolute right-0 top-1/2 translate-x-full -translate-y-1/2 flex flex-col gap-1">
-                                        <button className="text-white p-1 bg-gray-700 rounded hover:bg-gray-600" title="Save this slot" onClick={() => saveOne(i)}><ArrowRight size={16} /></button>
-                                        {s.block.groupId && s.block.groupId!="" && <button className="text-white p-1 bg-gray-700 rounded hover:bg-gray-600" title="Save all slots of this block" onClick={() => saveAll(i)}><ArrowDown size={16} /></button>}
+                    {(() => {
+                        const key = dateToHHMM(s.slotStart);
+                        const checked = slotStatus[key] || false;
+                        return (
+                            <>
+                                <input type="checkbox" checked={checked} onChange={e => toggleSlot(key, s, e.target.checked)} className="mt-1" />
+                                {!s.block ? (
+                                    <button className="flex-1 border border-dashed border-gray-600 rounded-md h-9 hover:ring-2 ring-white/40" />
+                                ) : (
+                                    <div className="relative flex-1">
+                                        {editing === i ? (
+                                            <>
+                                                <textarea ref={inputRef} defaultValue={s.block.name} rows={2} className={`w-full rounded-md p-2 text-xs resize-none ${catBg[s.block.category]}`} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); saveOne(i); } }} />
+                                                <div className="absolute right-0 top-1/2 translate-x-full -translate-y-1/2 flex flex-col gap-1">
+                                                    <button className="text-white p-1 bg-gray-700 rounded hover:bg-gray-600" title="Save this slot" onClick={() => saveOne(i)}><ArrowRight size={16} /></button>
+                                                    {s.block.groupId && s.block.groupId!="" && <button className="text-white p-1 bg-gray-700 rounded hover:bg-gray-600" title="Save all slots of this block" onClick={() => saveAll(i)}><ArrowDown size={16} /></button>}
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className={`w-full min-h-9 rounded-md px-2 py-1 text-xs flex items-center hover:ring-2 ring-white/40 ${catBg[s.block.category]} ${checked ? 'line-through' : ''}`}>
+                                                <span className="flex-1 text-left">{s.block.name}</span>
+                                                <button className="ml-2" onClick={() => setEditing(i)}><Pencil size={14} /></button>
+                                            </div>
+                                        )}
                                     </div>
-                                </>
-                            ) : (
-                                <button className={`w-full rounded-md px-2 py-1 text-left text-xs ${catBg[s.block.category]} hover:ring-2 ring-white/40`} onDoubleClick={() => setEditing(i)} title="Double-click to edit">{s.block.name}</button>
-                            )}
-                        </div>
-                    )}
+                                )}
+                            </>
+                        );
+                    })()}
                 </div>
             ))}
         </div>
