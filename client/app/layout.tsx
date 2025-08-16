@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import '@livekit/components-styles';
-import NavBar from '../components/NavBar';
 import SideNav from '../components/SideNav';
 
 const geistSans = Geist({
@@ -28,13 +27,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-black`}>
-          <NavBar />
-          <div className="flex">
-            <SideNav />
-            <div className="flex-1">
-              {children}
-            </div>
+        <div className="flex">
+          <SideNav />
+          <div className="flex-1">
+            {children}
           </div>
+        </div>
       </body>
     </html>
   );
