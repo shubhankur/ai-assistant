@@ -44,10 +44,12 @@ MODIFY_PLAN_PROMPTS = {
         --> Explicit Rules. 
           - If the user specified a specific day/time for an activity, schedule it exactly there.
           - Every activity must have a start time, end time, name, and category. For name and category if unclear, use "open" and "other".
-          - There should always be one and only one block exactly with the name "Sleep" and it should be the last acitivity of the day.
+          - There should always be one and only one block exactly with the category wakeup which demonstrates start of the day.
+          - There should always be one and only one block exactly with the category sleep and it should be the last acitivity of the day.
           - Since we are starting the day with wake up in the morning. Consider midnight, that is 00:00 or 12AM as the next day. So return it with +1.
-          - If the user has multiple sleep timings in a day, call it other sleep terms for e.g. "Afternoon Sleep, Nap"
+          - If the user has multiple sleep or wakup activities in a day, use category relax.
           - Two activities cannot have the same start time or same end times.
+          - Must maintain Chronological order inside each day after all inserts/merges. 
         --> Break between continuous blocks:
           If the user is working continuously for a long period of time, insert a break that matches an aspiration or suggestion (e.g., meditation or small walk after 2 hours of continuous work). Choose an appropriate length (10-60 min). 
           OR, Instead of a break arrange essentials like meals, workouts between Continuous blocks. 
@@ -112,11 +114,12 @@ MODIFY_PLAN_PROMPTS = {
         --> Explicit Rules. 
           - If the user specified a specific day/time for an activity, schedule it exactly there.
           - Every activity must have a start time, end time, name, and category. For name and category if unclear, use "open" and "other".
-          - There should always be one and only one block exactly with the name "Sleep" and it should be the last acitivity of the day.
-          - There should always be one and only one block exactly with the name "Wake Up" which demonstrates start of the day.
+          - There should always be one and only one block exactly with the category wakeup which demonstrates start of the day.
+          - There should always be one and only one block exactly with the category sleep and it should be the last acitivity of the day.
           - Since we are starting the day with wake up in the morning. Consider midnight, that is 00:00 or 12AM as the next day. So return it with +1.
-          - If the user has multiple sleep timings in a day, call it other sleep terms for e.g. "Afternoon Sleep, Nap"
+          - If the user has multiple sleep or wakup activities in a day, use category relax.
           - Two activities cannot have the same start time or same end times.
+          - Must maintain Chronological order inside each day after all inserts/merges. 
         --> Break between continuous blocks:
           If the user is working continuously for a long period of time, insert a break that matches an aspiration or suggestion (e.g., meditation or small walk after 2 hours of continuous work). Choose an appropriate length (10-60 min). 
           OR, Instead of a break arrange essentials like meals, workouts between Continuous blocks. 

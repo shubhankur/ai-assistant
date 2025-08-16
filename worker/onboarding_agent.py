@@ -91,6 +91,96 @@ class OnboardingAgent(Agent):
         if(self.stage == 5):
             await self.handle_post_stage4(chat_ctx)
     
+    async def handle_post_stage4(self, chat_ctx : ChatContext):
+        if(self.today_plan_json is None and self.today is not None):
+            if(self.tomorrow is None):
+                print("WARN: Agent does nto haver today set")
+            else:
+                try:
+                    today_plan_json = await self.get_daily_plan(self.today, chat_ctx)
+                    if(today_plan_json is None):
+                        #ToDo: Maybe ask to regenerate
+                        print("Error: today_plan_response was not a valid json")
+                    else:
+                        self.today_plan_json = today_plan_json
+                        print("today_plan response generated")
+                        today_plan_json["userid"] = self.user_id
+                        today_plan_json["date"] = self.today_date
+                        today_plan_json["week_day"] = self.today
+                        today_plan_json["timezone"] = self.timezone
+                        today_plan_json["locale"] = self.locale
+                        today_plan_json["version"] = 0
+                        # Save today_plan_json to server
+                        await save_to_server("dailyPlans/save", today_plan_json)
+                except Exception as e:
+                    print(f"Failed to get today's plan: {str(e)}")
+        
+        if(self.tomorrow_plan_json is None):
+            if(self.tomorrow is None):
+                print("WARN: Agentr does nto haver tomorrow set")
+            else:
+                try:
+                    tomorrow_plan_json = await self.get_daily_plan(self.tomorrow, chat_ctx)
+                    if(tomorrow_plan_json is None):
+                        #ToDo: Maybe ask to regenerate
+                        print("Error: tomorrow_plan_response was not a valid json")
+                    else:
+                        self.tomorrow_plan_json = tomorrow_plan_json
+                        print("tomorrow_plan response generated")
+                        tomorrow_plan_json["userid"] = self.user_id
+                        tomorrow_plan_json["date"] = self.tomorrow_date
+                        tomorrow_plan_json["week_day"] = self.tomorrow
+                        tomorrow_plan_json["timezone"] = self.timezone
+                        tomorrow_plan_json["locale"] = self.locale
+                        tomorrow_plan_json["version"] = 0
+                        # Save tomorrow_plan_json to server
+                        await save_to_server("dailyPlans/save", tomorrow_plan_json)
+                except Exception as e:
+                    print(f"Failed to get today's plan: {str(e)}")
+        
+        if(self.habit_reformation_json is None):
+            #2. Generate Ongoing Reformation list, Save to Mongo
+            try:
+                habit_reformation_prompt = ONBOARDING_PROMPTS["habit_reformation_prompt"]
+                habit_reformation_res = await self._llm_complete(habit_reformation_prompt, chat_ctx)
+                habit_reformation_json = self._parse_json(habit_reformation_res)
+                if(habit_reformation_json is None):
+                    #ToDo: Maybe ask to regenerate
+                    print("Error: Habit Reformation response is not a valid json")
+                else:
+                    self.habit_reformation_json = habit_reformation_json
+                    habit_reformation_json["userid"] = self.user_id
+                    habit_reformation_json["timezone"] = self.timezone
+                    await save_to_server("ongoingChanges/save", habit_reformation_json)
+            except Exception as e:
+                print(f"Failed to generate habit reformation plan: {str(e)}")
+        if(self.weekly_plan_json is None):
+            #3. Generate Weekly Plan, Save to Mongo
+            try:
+                weekly_plan_prompt = ONBOARDING_PROMPTS["weekly_plan"].format(current_routine=self.stage3_response_json, desired_changes=self.stage4_output_json, suggestions=self.habit_reformation_json)
+                weekly_plan_res = await self._llm_complete(weekly_plan_prompt, ChatContext.empty())
+                weekly_plan_json = self._parse_json(weekly_plan_res)
+                if(weekly_plan_json is None):
+                    #ToDo: Maybe ask to regenerate
+                    print("Error: Weekly Plan Response is not a valid json")
+                else:
+                    self.weekly_plan_json = weekly_plan_json
+                    weekly_plan_json["userid"] = self.user_id
+                    weekly_plan_json["timezone"] = self.timezone
+                    days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] #Mon is the start of the week.
+                    day_idx = days.index(self.today if self.today is not None else 'Mon')
+                    today_date = self.today_date_parsed
+                    if today_date is not None:
+                        week_start_date = today_date - timedelta(days=day_idx)
+                        week_start_date_str = format_date(week_start_date, format="yyyy-MM-dd", locale=self.locale.replace("-", "_") if self.locale is not None else "en_US")
+                        weekly_plan_json["date"] = week_start_date_str
+                    else:
+                        print("WARN: today_date_parsed is None, cannot calculate week start date")
+                    weekly_plan_json["locale"] = self.locale
+                    await save_to_server("weeklyRoutines/save", weekly_plan_json)
+            except Exception as e:
+                print(f"Failed to generate weekly plan: {str(e)}")
+
     async def start(self, metadata_json : dict) -> None:
         if(self._room is None):
             raise Exception("Room is not set for the agent.")
@@ -325,96 +415,6 @@ class OnboardingAgent(Agent):
                 else:
                     print("WARN: _room is None, cannot send tomorrow_plan")
                 
-    async def handle_post_stage4(self, chat_ctx : ChatContext):
-        if(self.today_plan_json is None and self.today is not None):
-            if(self.tomorrow is None):
-                print("WARN: Agent does nto haver today set")
-            else:
-                try:
-                    today_plan_json = await self.get_daily_plan(self.today, chat_ctx)
-                    if(today_plan_json is None):
-                        #ToDo: Maybe ask to regenerate
-                        print("Error: today_plan_response was not a valid json")
-                    else:
-                        self.today_plan_json = today_plan_json
-                        print("today_plan response generated")
-                        today_plan_json["userid"] = self.user_id
-                        today_plan_json["date"] = self.today_date
-                        today_plan_json["week_day"] = self.today
-                        today_plan_json["timezone"] = self.timezone
-                        today_plan_json["locale"] = self.locale
-                        today_plan_json["version"] = 0
-                        # Save today_plan_json to server
-                        await save_to_server("dailyPlans/save", today_plan_json)
-                except Exception as e:
-                    print(f"Failed to get today's plan: {str(e)}")
-        
-        if(self.tomorrow_plan_json is None):
-            if(self.tomorrow is None):
-                print("WARN: Agentr does nto haver tomorrow set")
-            else:
-                try:
-                    tomorrow_plan_json = await self.get_daily_plan(self.tomorrow, chat_ctx)
-                    if(tomorrow_plan_json is None):
-                        #ToDo: Maybe ask to regenerate
-                        print("Error: tomorrow_plan_response was not a valid json")
-                    else:
-                        self.tomorrow_plan_json = tomorrow_plan_json
-                        print("tomorrow_plan response generated")
-                        tomorrow_plan_json["userid"] = self.user_id
-                        tomorrow_plan_json["date"] = self.tomorrow_date
-                        tomorrow_plan_json["week_day"] = self.tomorrow
-                        tomorrow_plan_json["timezone"] = self.timezone
-                        tomorrow_plan_json["locale"] = self.locale
-                        tomorrow_plan_json["version"] = 0
-                        # Save tomorrow_plan_json to server
-                        await save_to_server("dailyPlans/save", tomorrow_plan_json)
-                except Exception as e:
-                    print(f"Failed to get today's plan: {str(e)}")
-        
-        if(self.habit_reformation_json is None):
-            #2. Generate Ongoing Reformation list, Save to Mongo
-            try:
-                habit_reformation_prompt = ONBOARDING_PROMPTS["habit_reformation_prompt"]
-                habit_reformation_res = await self._llm_complete(habit_reformation_prompt, chat_ctx)
-                habit_reformation_json = self._parse_json(habit_reformation_res)
-                if(habit_reformation_json is None):
-                    #ToDo: Maybe ask to regenerate
-                    print("Error: Habit Reformation response is not a valid json")
-                else:
-                    self.habit_reformation_json = habit_reformation_json
-                    habit_reformation_json["userid"] = self.user_id
-                    habit_reformation_json["timezone"] = self.timezone
-                    await save_to_server("ongoingChanges/save", habit_reformation_json)
-            except Exception as e:
-                print(f"Failed to generate habit reformation plan: {str(e)}")
-        if(self.weekly_plan_json is None):
-            #3. Generate Weekly Plan, Save to Mongo
-            try:
-                weekly_plan_prompt = ONBOARDING_PROMPTS["weekly_plan"]
-                weekly_plan_res = await self._llm_complete(weekly_plan_prompt, chat_ctx)
-                weekly_plan_json = self._parse_json(weekly_plan_res)
-                if(weekly_plan_json is None):
-                    #ToDo: Maybe ask to regenerate
-                    print("Error: Weekly Plan Response is not a valid json")
-                else:
-                    self.weekly_plan_json = weekly_plan_json
-                    weekly_plan_json["userid"] = self.user_id
-                    weekly_plan_json["timezone"] = self.timezone
-                    days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] #Mon is the start of the week.
-                    day_idx = days.index(self.today if self.today is not None else 'Mon')
-                    today_date = self.today_date_parsed
-                    if today_date is not None:
-                        week_start_date = today_date - timedelta(days=day_idx)
-                        week_start_date_str = format_date(week_start_date, format="yyyy-MM-dd", locale=self.locale.replace("-", "_") if self.locale is not None else "en_US")
-                        weekly_plan_json["date"] = week_start_date_str
-                    else:
-                        print("WARN: today_date_parsed is None, cannot calculate week start date")
-                    weekly_plan_json["locale"] = self.locale
-                    await save_to_server("weeklyRoutines/save", weekly_plan_json)
-            except Exception as e:
-                print(f"Failed to generate weekly plan: {str(e)}")
-
     async def get_daily_plan(self, input_day : str, chat_ctx : llm.ChatContext) -> dict | None:
         day_plan_prompt = ONBOARDING_PROMPTS["today_plan"].format(day=input_day)
         day_plan_res = await self._llm_complete(day_plan_prompt, chat_ctx)
