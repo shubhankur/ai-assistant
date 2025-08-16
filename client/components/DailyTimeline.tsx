@@ -35,79 +35,39 @@ const fmt = (d: Date) => d.toLocaleTimeString("en-US", { hour: "numeric", minute
 
 
 /* ------------------------ Component ---------------------------------- */
-
-interface BlockWithGroupId extends Block {
-    groupId: string;
-}
+// Persist updated plan to server, incrementing version automatically
+const persistPlan = async (plan : DayPlan) => {
+    try {
+        await fetch(`${SERVER_URL}/dailyPlans/save`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(plan),
+        });
+    } catch (err) {
+        console.error('Failed to save daily plan', err);
+    }
+};
 
 export function DailyTimeline(plan: DayPlan) {
     // ensure every block has groupId
     const [year, month, day] = plan.date.split('-')
-    const [state, setState] = useState<BlockWithGroupId[]>();
+    const [state, setState] = useState<Block[]>();
 
-    const open_blk = {
+    const open_blk : Block = {
         start:"",
         end:"",
         groupId:"",
         name: "Open",
         category: "other"
     }
-    useEffect(() => {
-        const received_blocks: Block[] = plan.blocks;
-        // 1) Find a "Wake Up" block (case-insensitive)
-        const wakeUp = received_blocks.find(b => b.name.toLowerCase() === "wake up");
-        const wakeUpMinutes = wakeUp ? (() => {
-            const [h, m] = wakeUp.start.replace("+1", "").split(":").map(Number);
-            return h * 60 + m;
-        })() : null;
-        const addPlusIfNeeded = (time: string): string => {
-            if (time.includes("+1")) return time;       // already tagged
-            const [h, m] = time.split(":").map(Number);
-            const mins = h * 60 + m;
-            // Any time strictly before wake-up belongs to *next* day
-            if(wakeUpMinutes){
-                return mins < wakeUpMinutes ? `${time}+1` : time;
-            } else {
-                return mins < 240 ? `${time}+1` : time;
-            }
-        };
-        const init: BlockWithGroupId[] = received_blocks.map(block => ({
-            ...block,
-            start: addPlusIfNeeded(block.start),
-            end: addPlusIfNeeded(block.end),
-            groupId: uuid()
-        }));
-        setState(init);
-    }, [plan]);
+    plan = setPlusOneToTime(plan);
+    setState(plan.blocks)
 
     const [editing, setEditing] = useState<number | null>(null);
     const inputRef = useRef<HTMLTextAreaElement | null>(null);
 
-    // Persist updated plan to server, incrementing version automatically
-    const persistPlan = async (blocks: BlockWithGroupId[]) => {
-        try {
-            // Strip internal UI fields before sending
-            const cleanBlocks: Block[] = blocks.map(({ groupId, ...rest }) => rest);
-            const payload = {
-                date: plan.date,
-                week_day: plan.week_day,
-                timezone: plan.timezone,
-                locale: plan.locale,
-                blocks: cleanBlocks,
-            } as const;
-
-            await fetch(`${SERVER_URL}/dailyPlans/save`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify(payload),
-            });
-        } catch (err) {
-            console.error('Failed to save daily plan', err);
-        }
-    };
     useEffect(() => { if (editing !== null) inputRef.current?.focus(); }, [editing]);
-
 
     if(!state){
         return (
@@ -119,13 +79,13 @@ export function DailyTimeline(plan: DayPlan) {
 
     /* build slots */
     const sorted = [...state].sort((a, b) => hhmmToDate(a.start).getTime() - hhmmToDate(b.start).getTime());
-    const firstActive = sorted[0];
+    const firstActive = sorted[0]; //ideally this should always be wakeup block
     const start = hhmmToDate(firstActive.start);
-    const firstSleep = sorted.find(b => b.name.toLowerCase() === "sleep");
+    const firstSleep = sorted.find(b => b.category.toLowerCase() === "sleep");
     const endTs = firstSleep ? hhmmToDate(firstSleep.start).getTime() : hhmmToDate(sorted.at(-1)!.end).getTime();
     type Slot = {
         time: string,
-        block?: BlockWithGroupId,
+        block?: Block,
         idx?: number,
         slotStart: Date
     };
@@ -159,12 +119,12 @@ export function DailyTimeline(plan: DayPlan) {
     console.log(slots)
 
     /* split helper */
-    const splitBlock = (blocks: BlockWithGroupId[], idx: number, slotStart: Date): BlockWithGroupId[] => {
+    const splitBlock = (blocks: Block[], idx: number, slotStart: Date): Block[] => {
         const blk = blocks[idx];
         const st = hhmmToDate(blk.start), ed = hhmmToDate(blk.end);
         if (ed.getTime() - st.getTime() === MS30) return blocks;
         const slotEnd = new Date(slotStart.getTime() + MS30);
-        const frags: BlockWithGroupId[] = [];
+        const frags: Block[] = [];
         if (st < slotStart) frags.push({ 
             ...blk, 
             end: dateToHHMM(slotStart), 
@@ -193,7 +153,11 @@ export function DailyTimeline(plan: DayPlan) {
         const startKey = dateToHHMM(sl.slotStart);
         const bi = next.findIndex(b => b.start === startKey);
         next[bi] = { ...next[bi], name: inputRef.current.value.trim() || next[bi].name };
-        setState(next); persistPlan(next); setEditing(null);
+        setState(next);
+        let newPlan = plan
+        newPlan.blocks = next
+        persistPlan(newPlan); 
+        setEditing(null);
     };
     
     const saveAll = (si: number) => {
@@ -207,7 +171,9 @@ export function DailyTimeline(plan: DayPlan) {
         );
     
         setState(next);
-        persistPlan(next);
+        let newPlan = plan
+        newPlan.blocks = next
+        persistPlan(newPlan);
         setEditing(null);
     };
     console.log(editing)
@@ -240,3 +206,46 @@ export function DailyTimeline(plan: DayPlan) {
         </div>
     );
 };
+
+function setPlusOneToTime(plan: DayPlan) : DayPlan{
+    const received_blocks: Block[] = plan.blocks;
+    //Find a "Wake Up" block to add "+1" to the activities before wakup and after 12.
+    const wakeUp = received_blocks.find(b => b.category.toLowerCase() === "wakeup");
+    const wakeUpMinutes = wakeUp ? (() => {
+        const [h, m] = wakeUp.start.replace("+1", "").split(":").map(Number);
+        return h * 60 + m;
+    })() : null;
+    let updated = false;
+    const addPlusIfNeeded = (time: string): string => {
+        if (time.includes("+1")) return time; // already tagged
+        const [h, m] = time.split(":").map(Number);
+        const mins = h * 60 + m;
+        // Any time strictly before wake-up belongs to *next* day
+        if (wakeUpMinutes) {
+            if (mins < wakeUpMinutes) {
+                if (!updated) updated = true;
+                return `${time}+1`;
+            } else {
+                return time;
+            }
+        } else { //from 12-4 am //ToDo: Can later ask user to set a default start day time
+            if (mins < 240) {
+                if (!updated) updated = true;
+                return `${time}+1`;
+            } else {
+                return time;
+            }
+        }
+    };
+    const init: Block[] = received_blocks.map(block => ({
+        ...block,
+        start: addPlusIfNeeded(block.start),
+        end: addPlusIfNeeded(block.end),
+        groupId: block.groupId || uuid()
+    }));
+    plan.blocks = init;
+    if (updated) {
+        persistPlan(plan);
+    }
+    return plan;
+}

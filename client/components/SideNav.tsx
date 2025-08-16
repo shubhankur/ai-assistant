@@ -71,7 +71,7 @@ export default function SideNav() {
         {collapsed ? <ChevronRight /> : <ChevronLeft />}
       </button>
       <ul className="space-y-2 flex-1">
-        {name && !collapsed && <li className="px-2 text-sm text-gray-300">{name}</li>}
+        {name && !collapsed && <li className="px-2 text-gray-300">Hey {name}</li>}
         {items.map((item) => (
           <li key={item.href}>
             <Link

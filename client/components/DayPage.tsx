@@ -30,6 +30,9 @@ export interface Block {
   category: string;
   location?: string;
   details?: string;
+  groupId: string;
+  totalSlots?: number;
+  completedSlots?: number;
 }
 
 export interface DayPlan {
