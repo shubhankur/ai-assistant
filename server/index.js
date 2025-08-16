@@ -10,6 +10,7 @@ const desiredHabitChanges = require('./routes/desiredHabitChanges');
 const ongoingChanges = require('./routes/ongoingChanges');
 const weeklyRoutines = require('./routes/weeklyRoutines');
 const journals = require('./routes/journals');
+const slots = require('./routes/slots');
 const auth = require('./routes/auth');
 const authMiddleware = require('./middleware/auth');
 const internalRoutes = require('./routes/internal');
@@ -45,6 +46,7 @@ app.use('/desiredHabitChanges', authMiddleware, desiredHabitChanges);
 app.use('/ongoingChanges', authMiddleware, ongoingChanges);
 app.use('/weeklyRoutines', authMiddleware, weeklyRoutines);
 app.use('/journals', authMiddleware, journals);
+app.use('/slots', authMiddleware, slots);
   app.get('/health', (req, res) => res.send('OK'));
 
 
