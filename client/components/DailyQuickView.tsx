@@ -19,6 +19,20 @@ const catColor: Record<string, string> = {
 };
 
 const tz = "America/New_York";
+const MS30 = 1.8e6; //30 minutes
+const hhmmToDate = (s: string) => {
+  const n = s.includes("+1");
+  const [h, m] = s.replace("+1", "").split(":").map(Number);
+  const d = new Date();
+  if (n) d.setDate(d.getDate() + 1);
+  d.setHours(h % 24, m, 0, 0);
+  return d;
+};
+const dateToHHMM = (d: Date, n = false) =>
+  `${d.getHours().toString().padStart(2, "0")}:${d
+    .getMinutes()
+    .toString()
+    .padStart(2, "0")}${n ? "+1" : ""}`;
 const to12h = (t: string) => {
   const next = t.includes("+1");
   const [h, m] = t.replace("+1", "").split(":").map(Number);
@@ -49,13 +63,39 @@ const ProgressCircle = ({completed = 0, total = 0}: {completed?: number,total?: 
 
 export function DailyQuickView (plan: DayPlan) {
   const [year, month, day] = plan.date.split('-')
-  const [completed, setCompleted] = useState<Record<number, boolean>>({});
+  const [completed, setCompleted] = useState<Record<number, boolean>>(() => {
+    const init: Record<number, boolean> = {};
+    plan.blocks.forEach((b, i) => {
+      init[i] = !!b.total_slots && b.completed_slots === b.total_slots;
+    });
+    return init;
+  });
   const touchStart = useRef<Record<number, number>>({});
   const handleSwipe = async (idx: number, done: boolean) => {
     setCompleted(prev => ({...prev, [idx]: done}));
-    // naive server update
+    const block = plan.blocks[idx];
+    block.completed_slots = done ? block.total_slots || 0 : 0;
     try{
-      await fetch(`${SERVER_URL}/slots/complete`, { method: 'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({ dailyPlanId: plan._id, start: plan.blocks[idx].start, completed: done })});
+      const startDate = hhmmToDate(block.start);
+      const endDate = hhmmToDate(block.end);
+      const reqs: Promise<any>[] = [];
+      for(let t = startDate.getTime(); t < endDate.getTime(); t += MS30){
+        const slotStart = new Date(t);
+        reqs.push(fetch(`${SERVER_URL}/slots/complete`, {
+          method: 'POST',
+          headers:{'Content-Type':'application/json'},
+          credentials:'include',
+          body: JSON.stringify({
+            dailyPlanId: plan._id,
+            start: dateToHHMM(slotStart),
+            end: dateToHHMM(new Date(t + MS30), block.end.includes('+1')),
+            name: block.name,
+            category: block.category,
+            completed: done
+          })
+        }));
+      }
+      await Promise.all(reqs);
     }catch(e){console.error(e);}
   }
   return(
