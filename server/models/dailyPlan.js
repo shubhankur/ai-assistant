@@ -16,6 +16,9 @@ const DailyPlanSchema = new mongoose.Schema({
       category: String,
       location: String,
       details: String,
+      groupId: String,
+      totalSlots: Number,
+      completedSlots: Number
     },
   ],
 });
